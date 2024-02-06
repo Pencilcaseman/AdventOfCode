@@ -4,6 +4,8 @@
 //! and implementation-wise. I've also tried to explain the solutions as best I
 //! can, so anyone struggling can get a better idea of what's going on.
 
+#![feature(iter_array_chunks)]
+
 /// Utility modules to handle common tasks
 pub mod util {
     pub mod parse;
@@ -12,4 +14,5 @@ pub mod util {
 /// Solutions for year 2023
 pub mod year2023 {
     pub mod day01;
+    pub mod day02;
 }
