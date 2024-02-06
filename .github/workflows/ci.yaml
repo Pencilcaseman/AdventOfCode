@@ -29,7 +29,3 @@ jobs:
     - run: cargo test
     - run: cargo test --release
 
-    - run: cargo run 
-    - run: cargo run --release
-
-    - run: cargo bench
