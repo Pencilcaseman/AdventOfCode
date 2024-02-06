@@ -21,13 +21,17 @@ jobs:
       with:
         toolchain: nightly
         override: true
+        components: rustfmt, clippy
 
     - run: cargo fmt --check
     - run: cargo clippy --tests --all-features -- --deny warnings
+
     - run: cargo build 
     - run: cargo build --release
+
     - run: cargo test
     - run: cargo test --release
+
     - run: cargo run 
     - run: cargo run --release
 
