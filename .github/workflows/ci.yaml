@@ -1,0 +1,28 @@
+name: Continuous Integration 
+
+on:
+  push:
+    branches:
+      - **
+  pull_request:
+    branches:
+      - **
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - run: cargo fmt --check
+    - run: cargo clippy --tests --all-features -- --deny warnings
+    - run: cargo build 
+    - run: cargo build --release
+    - run: cargo test
+    - run: cargo test --release
+    - run: cargo run 
+    - run: cargo run --release
+
+    - run: cargo bench
