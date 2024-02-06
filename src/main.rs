@@ -1,4 +1,5 @@
 #![warn(clippy::pedantic, clippy::nursery)]
+#![feature(iter_array_chunks)]
 
 use clap::Parser;
 use colored::*;
@@ -21,6 +22,8 @@ fn main() {
                 .any(|p| format!("year{}::day{:02}", s.year, s.day).contains(p))
     });
 
+    let mut total = 0;
+
     for Solution { year, day, runner } in solutions {
         let path: PathBuf = format!("input/year{year}/day{day:02}.txt").into();
 
@@ -33,16 +36,22 @@ fn main() {
         let (part1, part2) = runner(&data);
         let elapsed = start.elapsed();
 
+        total += elapsed.as_micros();
+
         println!(
             "{0} {1} Day {2:02} {0}",
             "=====".green().bold(),
             year.to_string().red().bold(),
             day.to_string().red().bold()
         );
+
         println!("Part 1 : {}", part1.purple());
         println!("Part 2 : {}", part2.purple());
         println!("Elapsed: {}", format!("{elapsed:?}").red());
+        println!();
     }
+
+    println!("Total time: {}", format!("{}ms", (total as f64) / 1000.0).red());
 }
 
 struct Solution {
@@ -75,5 +84,5 @@ macro_rules! solution {
 }
 
 fn year2023() -> Vec<Solution> {
-    vec![solution!(year2023, day01)]
+    vec![solution!(year2023, day01), solution!(year2023, day02)]
 }
