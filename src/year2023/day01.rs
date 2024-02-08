@@ -1,7 +1,9 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-const NUMS: [&str; 9] =
-    ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const NUMS: [&[u8]; 9] = [
+    b"one", b"two", b"three", b"four", b"five", b"six", b"seven", b"eight",
+    b"nine",
+];
 
 pub fn parse(input: &str) -> Vec<&str> {
     input.lines().collect()
@@ -31,16 +33,31 @@ pub fn part1(input: &[&str]) -> u32 {
 }
 
 /// A helper function which returns the number (digit or string) at the start of a given string
+// #[inline(always)]
+// fn num(line: &str, index: usize) -> Option<u32> {
+//     let bytes = line.as_bytes();
+//     if bytes[index].is_ascii_digit() {
+//         Some((bytes[index] - b'0') as u32)
+//     } else {
+//         NUMS.iter()
+//             .enumerate()
+//             .find(|(_, &n)| line[index..].starts_with(n))
+//             .map(|(index, _)| u32::try_from(index + 1).unwrap())
+//     }
+// }
+
 #[inline(always)]
-fn num(line: &str, index: usize) -> Option<u32> {
-    let bytes = line.as_bytes();
-    if bytes[index].is_ascii_digit() {
-        Some((bytes[index] - b'0') as u32)
+fn num(line: &[u8]) -> Option<u32> {
+    if line[0].is_ascii_digit() {
+        Some((line[0] - b'0') as u32)
     } else {
-        NUMS.iter()
-            .enumerate()
-            .find(|(_, &n)| line[index..].starts_with(n))
-            .map(|(index, _)| u32::try_from(index + 1).unwrap())
+        NUMS.iter().enumerate().find_map(|(index, &n)| {
+            if line.starts_with(n) {
+                Some(index as u32 + 1)
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -50,22 +67,24 @@ fn num(line: &str, index: usize) -> Option<u32> {
 pub fn part2(input: &[&str]) -> u32 {
     input
         .iter()
+        .map(|l| l.as_bytes())
         .map(|line| {
-            line.bytes()
+            line.iter()
                 .enumerate()
-                .find_map(|(index, _)| num(&line, index))
+                // .find_map(|(index, _)| num(&line, index))
+                .find_map(|(index, _)| num(&line[index..]))
                 .unwrap()
                 * 10
                 + line
-                    .bytes()
+                    .iter()
                     .enumerate()
                     .rev()
-                    .find_map(|(index, _)| num(&line, index))
+                    .find_map(|(index, _)| num(&line[index..]))
                     .unwrap()
         })
         .sum()
 }
 
-pub const fn verify() -> Option<(u32, u32)> {
-    Some((53974, 52840))
-}
+// For my input, the correct answer is:
+// Part 1: 53974
+// Part 2: 52840
