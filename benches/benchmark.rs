@@ -72,6 +72,7 @@ macro_rules! bench {
 
             pub fn bench(c: &mut Criterion) {
                 let mut group = c.benchmark_group(&name());
+                let _ = load_once();
                 bench_parse(&mut group);
                 bench_part1(&mut group);
                 bench_part2(&mut group);
@@ -83,10 +84,16 @@ macro_rules! bench {
 
 pub mod year2023 {
     bench!(year2023, day01);
+    bench!(year2023, day02);
+    bench!(year2023, day03);
+    bench!(year2023, day21);
 }
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     year2023::day01::bench(c);
+    year2023::day02::bench(c);
+    year2023::day03::bench(c);
+    year2023::day21::bench(c);
 }
 
 criterion_group!(benches, criterion_benchmark);

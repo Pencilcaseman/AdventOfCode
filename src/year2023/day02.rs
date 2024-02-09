@@ -5,8 +5,9 @@ use atoi::atoi;
 pub struct Game(u32, u32, u32);
 
 pub fn parse(input: &str) -> Vec<Game> {
-    // input.lines().collect()
-
+    // Split each line into chunks of size 2 (["5", "red"], ["3", "green"], etc.). Skip the first
+    // one, as it's the Game ID. For each one, match against the first letter, as that's sufficient
+    // to determine which colour it represents -- then just find the maximum value for each color.
     input
         .lines()
         .map(|line| {
@@ -36,6 +37,9 @@ pub fn parse(input: &str) -> Vec<Game> {
 }
 
 pub fn part1(input: &[Game]) -> usize {
+    // If the number of reds is greater than 12, the number of greens is greater than 13 or the
+    // number of blues is greater than 14, we reject that game. Otherwise, sum the indices.
+    // Note that we add one to the indices to account for 1-based indexing.
     input
         .iter()
         .enumerate()
@@ -50,9 +54,10 @@ pub fn part1(input: &[Game]) -> usize {
 }
 
 pub fn part2(input: &[Game]) -> u32 {
+    // Multiply the maximum values for each color and sum them all up.
     input.iter().map(|game| game.0 * game.1 * game.2).sum()
 }
 
-pub const fn verify() -> Option<(usize, u32)> {
-    Some((2006, 84911))
-}
+// For my input, the correct answer is:
+// Part 1: 2006
+// Part 2: 84911
