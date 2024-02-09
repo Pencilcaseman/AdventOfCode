@@ -33,19 +33,6 @@ pub fn part1(input: &[&str]) -> u32 {
 }
 
 /// A helper function which returns the number (digit or string) at the start of a given string
-// #[inline(always)]
-// fn num(line: &str, index: usize) -> Option<u32> {
-//     let bytes = line.as_bytes();
-//     if bytes[index].is_ascii_digit() {
-//         Some((bytes[index] - b'0') as u32)
-//     } else {
-//         NUMS.iter()
-//             .enumerate()
-//             .find(|(_, &n)| line[index..].starts_with(n))
-//             .map(|(index, _)| u32::try_from(index + 1).unwrap())
-//     }
-// }
-
 #[inline(always)]
 fn num(line: &[u8]) -> Option<u32> {
     if line[0].is_ascii_digit() {

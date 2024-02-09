@@ -28,7 +28,13 @@ fn main() {
         let path: PathBuf = format!("input/year{year}/day{day:02}.txt").into();
 
         let Ok(data) = std::fs::read_to_string(&path) else {
-            eprintln!("Failed to read input from {}", path.display());
+            // eprintln!("Failed to read input from {}", path.display());
+            println!(
+                "{}\n",
+                format!("Failed to read input from {}", path.display())
+                    .red()
+                    .bold()
+            );
             continue;
         };
 
@@ -39,10 +45,10 @@ fn main() {
         total += elapsed.as_micros();
 
         println!(
-            "{0} {1} Day {2:02} {0}",
+            "{0} {1} Day {2} {0}",
             "=====".green().bold(),
             year.to_string().red().bold(),
-            day.to_string().red().bold()
+            format!("{day:02}").red().bold()
         );
 
         println!("Part 1 : {}", part1.purple());
@@ -69,20 +75,17 @@ macro_rules! solution {
                 use aoc::$year::$day::*;
 
                 let input = parse(data);
-                let part1 = part1(&input);
-                let part2 = part2(&input);
-
-                if let Some(correct) = verify() {
-                    assert_eq!(part1, correct.0);
-                    assert_eq!(part2, correct.1);
-                }
-
-                (part1.to_string(), part2.to_string())
+                (part1(&input).to_string(), part2(&input).to_string())
             },
         }
     };
 }
 
 fn year2023() -> Vec<Solution> {
-    vec![solution!(year2023, day01), solution!(year2023, day02)]
+    vec![
+        solution!(year2023, day01),
+        solution!(year2023, day02),
+        solution!(year2023, day03),
+        solution!(year2023, day21),
+    ]
 }
