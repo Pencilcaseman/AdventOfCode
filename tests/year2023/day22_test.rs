@@ -1,4 +1,4 @@
-// use aoc::year2023::day21::*;
+use aoc::year2023::day022::*;
 
 #[test]
 fn test_sample_part1() {
