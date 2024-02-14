@@ -56,18 +56,20 @@ pub fn part2(input: &[&str]) -> u32 {
         .iter()
         .map(|l| l.as_bytes())
         .map(|line| {
-            line.iter()
+            let first = line
+                .iter()
                 .enumerate()
-                // .find_map(|(index, _)| num(&line, index))
                 .find_map(|(index, _)| num(&line[index..]))
-                .unwrap()
-                * 10
-                + line
-                    .iter()
-                    .enumerate()
-                    .rev()
-                    .find_map(|(index, _)| num(&line[index..]))
-                    .unwrap()
+                .unwrap();
+
+            let second = line
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(index, _)| num(&line[index..]))
+                .unwrap();
+
+            (first * 10 + second) as u32
         })
         .sum()
 }

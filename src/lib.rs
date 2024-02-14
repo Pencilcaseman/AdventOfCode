@@ -17,4 +17,5 @@ pub mod year2023 {
     pub mod day02;
     pub mod day03;
     pub mod day21;
+    pub mod day22;
 }
