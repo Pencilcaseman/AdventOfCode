@@ -5,11 +5,10 @@ use criterion::*;
 macro_rules! bench {
     ($year:tt, $day:tt) => {
         pub mod $day {
-            use aoc::$year::$day::*;
+            use std::{path::PathBuf, sync::OnceLock};
 
+            use aoc::$year::$day::*;
             use criterion::*;
-            use std::path::PathBuf;
-            use std::sync::OnceLock;
 
             /// Load the input data from the file only once, and store it
             /// statically for future use.
