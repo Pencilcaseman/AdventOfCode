@@ -1,9 +1,10 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 #![feature(iter_array_chunks)]
 
+use std::path::PathBuf;
+
 use clap::Parser;
 use colored::*;
-use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

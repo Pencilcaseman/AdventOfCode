@@ -20,6 +20,13 @@ strip = true
 debug = false
 debug-assertions = false
 
+[profile.release.package."*"]
+codegen-units = 1
+opt-level = 3
+strip = true
+debug = false
+debug-assertions = false
+
 [[bench]]
 name = "benchmark"
 harness = false
