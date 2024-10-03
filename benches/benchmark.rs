@@ -85,6 +85,7 @@ pub mod year2023 {
     bench!(year2023, day01);
     bench!(year2023, day02);
     bench!(year2023, day03);
+    bench!(year2023, day04);
     bench!(year2023, day21);
     bench!(year2023, day22);
 }
@@ -93,6 +94,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     year2023::day01::bench(c);
     year2023::day02::bench(c);
     year2023::day03::bench(c);
+    year2023::day04::bench(c);
     year2023::day21::bench(c);
     year2023::day22::bench(c);
 }
