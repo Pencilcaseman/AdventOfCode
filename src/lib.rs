@@ -5,9 +5,11 @@
 //! can, so anyone struggling can get a better idea of what's going on.
 
 #![feature(iter_array_chunks)]
+#![feature(binary_heap_into_iter_sorted)]
 
 /// Utility modules to handle common tasks
 pub mod util {
+    pub mod integer;
     pub mod parse;
 }
 
@@ -19,4 +21,8 @@ pub mod year2023 {
     pub mod day04;
     pub mod day21;
     pub mod day22;
+}
+
+pub mod year2024 {
+    pub mod day01;
 }

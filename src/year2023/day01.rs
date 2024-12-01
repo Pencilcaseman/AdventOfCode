@@ -5,12 +5,18 @@ const NUMS: [&[u8]; 9] = [
     b"nine",
 ];
 
+#[must_use]
 pub fn parse(input: &str) -> Vec<&str> {
     input.lines().collect()
 }
 
-/// Since all the values are 2-digit numbers, we just need to find the first and last digit,
-/// multiply the first by 10 and add the second.
+/// Since all the values are 2-digit numbers, we just need to find the first and
+/// last digit, multiply the first by 10 and add the second.
+///
+/// # Panics
+///
+/// Panics if the input is not in a valid format.
+#[must_use]
 pub fn part1(input: &[&str]) -> u32 {
     input
         .iter()
@@ -27,20 +33,21 @@ pub fn part1(input: &[&str]) -> u32 {
                 .map(|c| c - b'0')
                 .unwrap();
 
-            (first * 10 + second) as u32
+            u32::from(first * 10 + second)
         })
         .sum()
 }
 
-/// A helper function which returns the number (digit or string) at the start of a given string
+/// A helper function which returns the number (digit or string) at the start of
+/// a given string
 #[inline(always)]
 fn num(line: &[u8]) -> Option<u32> {
     if line[0].is_ascii_digit() {
-        Some((line[0] - b'0') as u32)
+        Some(u32::from(line[0] - b'0'))
     } else {
-        NUMS.iter().enumerate().find_map(|(index, &n)| {
+        NUMS.iter().enumerate().find_map(|(index, &n)| -> Option<u32> {
             if line.starts_with(n) {
-                Some(index as u32 + 1)
+                Some(u32::try_from(index + 1).unwrap())
             } else {
                 None
             }
@@ -48,9 +55,17 @@ fn num(line: &[u8]) -> Option<u32> {
     }
 }
 
-/// This is similar to part 1, except we have to search for digit strings as well. Iterating
-/// backwards still works here because we either find a digit, the start of a digit string, or
-/// nothing at all. In any case, the `num` function will work and the same logic as part 1 applies.
+/// Solve part 2 of the question.
+///
+/// This is similar to part 1, except we have to search for digit strings as
+/// well. Iterating backwards still works here because we either find a digit,
+/// the start of a digit string, or nothing at all. In any case, the `num`
+/// function will work and the same logic as part 1 applies.
+///
+/// # Panics
+///
+/// Panics if the input is not in a valid format.
+#[must_use]
 pub fn part2(input: &[&str]) -> u32 {
     input
         .iter()
@@ -69,7 +84,7 @@ pub fn part2(input: &[&str]) -> u32 {
                 .find_map(|(index, _)| num(&line[index..]))
                 .unwrap();
 
-            (first * 10 + second) as u32
+            first * 10 + second
         })
         .sum()
 }

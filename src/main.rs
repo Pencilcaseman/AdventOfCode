@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use colored::*;
+use colored::Colorize;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -16,12 +16,19 @@ struct Args {
 fn main() {
     let target = Args::parse().solutions;
 
-    let solutions = std::iter::empty().chain(year2023()).filter(|s| {
-        target.is_empty()
-            || target
-                .iter()
-                .any(|p| format!("year{}::day{:02}", s.year, s.day).contains(p))
-    });
+    let tmp_str = "123 456 789 1 2 3 4 5 6 7 8 9 10";
+    let mut bytes = tmp_str.bytes();
+    while let Some(n) = aoc::util::parse::try_unsigned::<u32>(&mut bytes) {
+        println!("{n}");
+    }
+
+    let solutions =
+        std::iter::empty().chain(year2023()).chain(year2024()).filter(|s| {
+            target.is_empty()
+                || target.iter().any(|p| {
+                    format!("year{}::day{:02}", s.year, s.day).contains(p)
+                })
+        });
 
     let mut total = 0;
 
@@ -90,4 +97,8 @@ fn year2023() -> Vec<Solution> {
         solution!(year2023, day04),
         solution!(year2023, day21),
     ]
+}
+
+fn year2024() -> Vec<Solution> {
+    vec![solution!(year2024, day01)]
 }
