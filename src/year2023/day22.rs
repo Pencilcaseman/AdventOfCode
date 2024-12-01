@@ -1,14 +1,17 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-pub fn parse(input: &str) -> (usize, usize) {
+#[must_use]
+pub fn parse(_input: &str) -> (usize, usize) {
     todo!()
 }
 
-pub fn part1(input: &(usize, usize)) -> usize {
+#[must_use]
+pub fn part1(_input: &(usize, usize)) -> usize {
     todo!()
 }
 
-pub fn part2(input: &(usize, usize)) -> usize {
+#[must_use]
+pub fn part2(_input: &(usize, usize)) -> usize {
     todo!()
 }
 

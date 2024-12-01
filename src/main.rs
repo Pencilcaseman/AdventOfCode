@@ -16,12 +16,6 @@ struct Args {
 fn main() {
     let target = Args::parse().solutions;
 
-    let tmp_str = "123 456 789 1 2 3 4 5 6 7 8 9 10";
-    let mut bytes = tmp_str.bytes();
-    while let Some(n) = aoc::util::parse::try_unsigned::<u32>(&mut bytes) {
-        println!("{n}");
-    }
-
     let solutions =
         std::iter::empty().chain(year2023()).chain(year2024()).filter(|s| {
             target.is_empty()
