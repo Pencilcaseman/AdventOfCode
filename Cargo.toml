@@ -8,6 +8,8 @@ atoi = "2.0.0"
 clap = { version = "4.5.19", features = ["derive"] }
 colored = "2.1.0"
 criterion = { version = "0.5.1", features = ["real_blackbox"] }
+hashbrown = "0.15.2"
+num-traits = { version = "0.2.19", features = ["i128"] }
 
 [dev-dependencies]
 
