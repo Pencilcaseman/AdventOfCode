@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-use hashbrown::HashMap;
+use std::collections::HashMap;
 
 use crate::util::parse;
 
@@ -25,7 +25,13 @@ pub fn part1(input: &(Vec<u32>, Vec<u32>)) -> u32 {
 
 #[must_use]
 pub fn part2(input: &(Vec<u32>, Vec<u32>)) -> u32 {
-    let mut map = HashMap::<u32, u32>::with_capacity(1024);
+    type FastHashMap<K, V> = HashMap<K, V, fxhash::FxBuildHasher>;
+
+    let mut map = FastHashMap::<u32, u32>::with_capacity_and_hasher(
+        1024,
+        fxhash::FxBuildHasher::default(),
+    );
+
     input.0.iter().for_each(|n| *map.entry(*n).or_default() += 1);
     input.1.iter().filter_map(|n| map.get(n).map(|c| c * n)).sum()
 }
