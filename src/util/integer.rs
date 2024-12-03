@@ -16,6 +16,8 @@ pub trait Integer:
     + BitXor<Output = Self>
     + Not<Output = Self>
     + From<u8>
+    + std::fmt::Debug
+    + std::fmt::Display
 {
     const ZERO: Self;
     const ONE: Self;

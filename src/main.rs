@@ -13,6 +13,7 @@ struct Args {
     solutions: Vec<String>,
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn main() {
     let target = Args::parse().solutions;
 
@@ -30,7 +31,6 @@ fn main() {
         let path: PathBuf = format!("input/year{year}/day{day:02}.txt").into();
 
         let Ok(data) = std::fs::read_to_string(&path) else {
-            // eprintln!("Failed to read input from {}", path.display());
             println!(
                 "{}\n",
                 format!("Failed to read input from {}", path.display())
@@ -94,5 +94,9 @@ fn year2023() -> Vec<Solution> {
 }
 
 fn year2024() -> Vec<Solution> {
-    vec![solution!(year2024, day01), solution!(year2024, day02)]
+    vec![
+        solution!(year2024, day01),
+        solution!(year2024, day02),
+        solution!(year2024, day03),
+    ]
 }
