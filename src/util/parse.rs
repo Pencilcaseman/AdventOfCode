@@ -50,19 +50,18 @@ impl<T: util::integer::Signed> Iterator for ParseSigned<'_, T> {
     }
 }
 
-pub fn try_unsigned<T: util::integer::Unsigned>(
+pub fn try_unsigned_immediate<T: util::integer::Unsigned>(
     bytes: &mut std::str::Bytes,
 ) -> Option<T> {
-    // Take while not digits
-    let mut n = loop {
-        let byte = bytes.next()?;
-        let digit = byte.wrapping_sub(b'0');
-        if digit < 10 {
-            break T::from(digit);
-        }
-    };
+    let byte = bytes.next()?;
+    let digit = byte.wrapping_sub(b'0');
 
-    // Take while digits
+    if digit >= 10 {
+        return None;
+    }
+
+    let mut n: T = T::from(digit);
+
     loop {
         let Some(byte) = bytes.next() else { break Some(n) };
         let digit = byte.wrapping_sub(b'0');
@@ -75,6 +74,88 @@ pub fn try_unsigned<T: util::integer::Unsigned>(
     }
 }
 
+pub fn try_unsigned_immediate_with_final_byte<T: util::integer::Unsigned>(
+    bytes: &mut std::str::Bytes,
+) -> (Option<T>, Option<u8>) {
+    let Some(byte) = bytes.next() else { return (None, None) };
+    let digit = byte.wrapping_sub(b'0');
+
+    if digit >= 10 {
+        return (None, Some(byte));
+    }
+
+    let mut n: T = T::from(digit);
+
+    loop {
+        let Some(byte) = bytes.next() else { break (Some(n), None) };
+        let digit = byte.wrapping_sub(b'0');
+
+        if digit < 10 {
+            n = T::TEN * n + T::from(digit);
+        } else {
+            break (Some(n), Some(byte));
+        }
+    }
+}
+
+pub fn try_unsigned<T: util::integer::Unsigned>(
+    bytes: &mut std::str::Bytes,
+) -> Option<T> {
+    let mut n = loop {
+        let byte = bytes.next()?;
+        let digit = byte.wrapping_sub(b'0');
+        if digit < 10 {
+            break T::from(digit);
+        }
+    };
+
+    loop {
+        let Some(byte) = bytes.next() else { break Some(n) };
+        let digit = byte.wrapping_sub(b'0');
+
+        if digit < 10 {
+            n = T::TEN * n + T::from(digit);
+        } else {
+            break Some(n);
+        }
+    }
+}
+
+pub fn try_signed_immediate<T: util::integer::Signed>(
+    bytes: &mut std::str::Bytes,
+) -> Option<T> {
+    let mut byte = bytes.next()?;
+    let mut sign = false;
+
+    if byte == b'-' {
+        sign = true;
+        byte = bytes.next()?;
+    } else if byte == b'+' {
+        byte = bytes.next()?;
+    }
+
+    let digit = byte.wrapping_sub(b'0');
+
+    if digit >= 10 {
+        return None;
+    }
+
+    let mut n: T = T::from(digit);
+
+    let res = loop {
+        let Some(byte) = bytes.next() else { break n };
+        let digit = byte.wrapping_sub(b'0');
+
+        if digit < 10 {
+            n = T::TEN * n + T::from(digit);
+        } else {
+            break n;
+        }
+    };
+
+    Some(if sign { -res } else { res })
+}
+
 pub fn try_signed<T: util::integer::Signed>(
     bytes: &mut std::str::Bytes,
 ) -> Option<T> {
@@ -84,6 +165,8 @@ pub fn try_signed<T: util::integer::Signed>(
 
         if byte == b'-' {
             break (T::ZERO, true);
+        } else if byte == b'+' {
+            break (T::ZERO, false);
         }
 
         let digit = byte.wrapping_sub(b'0');
@@ -94,14 +177,18 @@ pub fn try_signed<T: util::integer::Signed>(
     };
 
     // Take while digits
-    loop {
-        let Some(byte) = bytes.next() else { break Some(n) };
+    let res = loop {
+        let Some(byte) = bytes.next() else {
+            break n;
+        };
         let digit = byte.wrapping_sub(b'0');
 
         if digit < 10 {
             n = T::TEN * n + T::from(digit);
         } else {
-            break Some(if sign { -n } else { n });
+            break n;
         }
-    }
+    };
+
+    Some(if sign { -res } else { res })
 }
