@@ -80,5 +80,5 @@ pub const fn part2(input: &(u32, u32)) -> u32 {
 }
 
 // For my input, the correct answer is:
-// Part 1:
-// Part 2:
+// Part 1: 164730528
+// Part 2: 70478672
