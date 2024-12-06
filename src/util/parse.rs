@@ -12,47 +12,74 @@ pub fn parse_number<T: std::str::FromStr>(s: &str) -> Option<T> {
         .ok()
 }
 
-pub struct ParseUnsigned<'a, T: util::integer::Unsigned> {
-    bytes: std::str::Bytes<'a>,
-    phantom: std::marker::PhantomData<T>,
+pub struct ParseUnsigned<'a, T, I = std::str::Bytes<'a>>
+where
+    T: util::integer::Unsigned,
+    I: Iterator<Item = u8>,
+{
+    bytes: I,
+    phantom: std::marker::PhantomData<&'a T>,
 }
 
-pub struct ParseSigned<'a, T: util::integer::Signed> {
-    bytes: std::str::Bytes<'a>,
-    phantom: std::marker::PhantomData<T>,
+pub struct ParseSigned<'a, T, I = std::str::Bytes<'a>>
+where
+    T: util::integer::Signed,
+    I: Iterator<Item = u8>,
+{
+    bytes: I,
+    phantom: std::marker::PhantomData<&'a T>,
 }
 
-impl<'a, T: util::integer::Unsigned> ParseUnsigned<'a, T> {
-    pub fn new(bytes: std::str::Bytes<'a>) -> Self {
+impl<T, I> ParseUnsigned<'_, T, I>
+where
+    T: util::integer::Unsigned,
+    I: Iterator<Item = u8>,
+{
+    pub fn new(bytes: I) -> Self {
         Self { bytes, phantom: std::marker::PhantomData }
     }
 }
 
-impl<'a, T: util::integer::Signed> ParseSigned<'a, T> {
-    pub fn new(bytes: std::str::Bytes<'a>) -> Self {
+impl<T, I> ParseSigned<'_, T, I>
+where
+    T: util::integer::Signed,
+    I: Iterator<Item = u8>,
+{
+    pub fn new(bytes: I) -> Self {
         Self { bytes, phantom: std::marker::PhantomData }
     }
 }
 
-impl<T: util::integer::Unsigned> Iterator for ParseUnsigned<'_, T> {
+impl<T, I> Iterator for ParseUnsigned<'_, T, I>
+where
+    T: util::integer::Unsigned,
+    I: Iterator<Item = u8>,
+{
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        try_unsigned::<T>(&mut self.bytes)
+        try_unsigned::<T, I>(&mut self.bytes)
     }
 }
 
-impl<T: util::integer::Signed> Iterator for ParseSigned<'_, T> {
+impl<T, I> Iterator for ParseSigned<'_, T, I>
+where
+    T: util::integer::Signed,
+    I: Iterator<Item = u8>,
+{
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        try_signed::<T>(&mut self.bytes)
+        try_signed::<T, I>(&mut self.bytes)
     }
 }
 
-pub fn try_unsigned_immediate<T: util::integer::Unsigned>(
-    bytes: &mut std::str::Bytes,
-) -> Option<T> {
+pub fn try_unsigned_immediate<T: util::integer::Unsigned, I>(
+    bytes: &mut I,
+) -> Option<T>
+where
+    I: Iterator<Item = u8>,
+{
     let byte = bytes.next()?;
     let digit = byte.wrapping_sub(b'0');
 
@@ -74,9 +101,13 @@ pub fn try_unsigned_immediate<T: util::integer::Unsigned>(
     }
 }
 
-pub fn try_unsigned_immediate_with_final_byte<T: util::integer::Unsigned>(
-    bytes: &mut std::str::Bytes,
-) -> (Option<T>, Option<u8>) {
+pub fn try_unsigned_immediate_with_final_byte<T, I>(
+    bytes: &mut I,
+) -> (Option<T>, Option<u8>)
+where
+    T: util::integer::Unsigned,
+    I: Iterator<Item = u8>,
+{
     let Some(byte) = bytes.next() else { return (None, None) };
     let digit = byte.wrapping_sub(b'0');
 
@@ -98,9 +129,10 @@ pub fn try_unsigned_immediate_with_final_byte<T: util::integer::Unsigned>(
     }
 }
 
-pub fn try_unsigned<T: util::integer::Unsigned>(
-    bytes: &mut std::str::Bytes,
-) -> Option<T> {
+pub fn try_unsigned<T: util::integer::Unsigned, I>(bytes: &mut I) -> Option<T>
+where
+    I: Iterator<Item = u8>,
+{
     let mut n = loop {
         let byte = bytes.next()?;
         let digit = byte.wrapping_sub(b'0');
@@ -121,9 +153,12 @@ pub fn try_unsigned<T: util::integer::Unsigned>(
     }
 }
 
-pub fn try_signed_immediate<T: util::integer::Signed>(
-    bytes: &mut std::str::Bytes,
-) -> Option<T> {
+pub fn try_signed_immediate<T: util::integer::Signed, I>(
+    bytes: &mut I,
+) -> Option<T>
+where
+    I: Iterator<Item = u8>,
+{
     let mut byte = bytes.next()?;
     let mut sign = false;
 
@@ -156,9 +191,10 @@ pub fn try_signed_immediate<T: util::integer::Signed>(
     Some(if sign { -res } else { res })
 }
 
-pub fn try_signed<T: util::integer::Signed>(
-    bytes: &mut std::str::Bytes,
-) -> Option<T> {
+pub fn try_signed<T: util::integer::Signed, I>(bytes: &mut I) -> Option<T>
+where
+    I: Iterator<Item = u8>,
+{
     // Take while not digits
     let (mut n, sign) = loop {
         let byte = bytes.next()?;
