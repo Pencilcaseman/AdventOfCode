@@ -4,6 +4,13 @@ use std::cmp::Ordering::{Greater, Less};
 
 // Note that the numbers are all two digits long, so we can optimize the parsing
 // quite a bit.
+//
+// Since our solution would involve a map from (n1, n2) to LESS, we can instead
+// use a 2D, 100x100 array as a lookup table. The array is stored statically and
+// has less overhead than a map, making it *a lot* faster.
+//
+// Using some cheeky sorting and partitioning magic for parts 1 and 2
+// respectively, we get a very fast solution.
 
 #[must_use]
 pub fn parse(input: &str) -> (u32, u32) {
