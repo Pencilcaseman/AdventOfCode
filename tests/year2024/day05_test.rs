@@ -35,3 +35,9 @@ fn test_part1() {
     let input = parse(SAMPLE_INPUT);
     assert_eq!(part1(&input), 143);
 }
+
+#[test]
+fn test_part2() {
+    let input = parse(SAMPLE_INPUT);
+    assert_eq!(part2(&input), 123);
+}
