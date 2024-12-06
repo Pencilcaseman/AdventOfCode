@@ -4,9 +4,10 @@ use std::collections::HashMap;
 
 use fxhash::FxBuildHasher;
 
-use crate::util::parse;
-
 type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
+
+// Note that the numbers are all two digits long, so we can optimize the parsing
+// quite a bit.
 
 /// # Panics
 ///
@@ -19,29 +20,17 @@ pub fn parse(input: &str) -> (Vec<(u32, u32)>, Vec<Vec<u32>>) {
 
     // Parse pairs
     loop {
-        let mut n1: u32 = 0;
-        let mut n2: u32 = 0;
-
         if bytes[idx] == b'\n' {
-            // Skip empty line
             idx += 1;
             break;
         }
 
-        while bytes[idx].is_ascii_digit() {
-            n1 = n1 * 10 + u32::from(bytes[idx] - b'0');
-            idx += 1;
-        }
+        let n1 = (bytes[idx] - b'0') * 10 + (bytes[idx + 1] - b'0');
+        let n2 = (bytes[idx + 3] - b'0') * 10 + (bytes[idx + 4] - b'0');
 
-        idx += 1; // Skip '|'
+        idx += 6;
 
-        while bytes[idx].is_ascii_digit() {
-            n2 = n2 * 10 + u32::from(bytes[idx] - b'0');
-            idx += 1;
-        }
-        idx += 1; // Skip newline
-
-        pairs.push((n1, n2));
+        pairs.push((u32::from(n1), u32::from(n2)));
     }
 
     let mut sections: Vec<Vec<u32>> = Vec::with_capacity(1024);
@@ -50,14 +39,10 @@ pub fn parse(input: &str) -> (Vec<(u32, u32)>, Vec<Vec<u32>>) {
         let mut tmp = Vec::with_capacity(32);
 
         loop {
-            let mut n = 0;
+            let n = (bytes[idx] - b'0') * 10 + (bytes[idx + 1] - b'0');
+            idx += 2;
 
-            while idx < bytes.len() && bytes[idx].is_ascii_digit() {
-                n = n * 10 + u32::from(bytes[idx] - b'0');
-                idx += 1;
-            }
-
-            tmp.push(n);
+            tmp.push(u32::from(n));
 
             if idx >= bytes.len() || bytes[idx] == b'\n' {
                 idx += 1;
@@ -73,12 +58,14 @@ pub fn parse(input: &str) -> (Vec<(u32, u32)>, Vec<Vec<u32>>) {
 }
 
 fn check_section(ordering: &[(u32, u32)], section: &[u32]) -> bool {
-    let map: FastHashMap<u32, usize> =
-        section.iter().enumerate().map(|(i, n)| (*n, i)).collect();
+    let mut map = [[std::cmp::Ordering::Greater; 100]; 100];
 
-    ordering.iter().all(|(left, right)| {
-        !(map.contains_key(left) && map.contains_key(right))
-            || map[left] < map[right]
+    for (first, second) in ordering {
+        map[*first as usize][*second as usize] = std::cmp::Ordering::Less;
+    }
+
+    section.is_sorted_by(|a, b| {
+        map[*a as usize][*b as usize] == std::cmp::Ordering::Less
     })
 }
 
