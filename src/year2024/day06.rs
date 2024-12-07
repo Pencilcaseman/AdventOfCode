@@ -1,37 +1,86 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// pub enum Direction {
-//     Up,
-//     Down,
-//     Left,
-//     Right,
-// }
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MapItem {
     Empty,
     Wall,
     Start,
     Seen((isize, isize)),
+    Looper((isize, isize)),
 }
-
-// impl TryFrom<(isize, isize)> for Direction {
-//     type Error = ();
-//
-//     fn try_from(value: (isize, isize)) -> Result<Self, Self::Error> {
-//         match value {
-//             (-1, 0) => Ok(Direction::Up),
-//             (0, -1) => Ok(Direction::Left),
-//             (1, 0) => Ok(Direction::Down),
-//             (0, 1) => Ok(Direction::Right),
-//             _ => Err(()),
-//         }
-//     }
-// }
 
 type Map = Vec<Vec<MapItem>>;
 type Input = (Map, (isize, isize));
+
+// Rotates a direction 90 degrees clockwise
+const fn rotate(dir: (isize, isize)) -> (isize, isize) {
+    (dir.1, -dir.0)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TraceResult {
+    Loop(usize),
+    Exit(usize),
+}
+
+#[allow(
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::missing_panics_doc
+)]
+#[must_use]
+pub fn trace_route(
+    mut map: Map,
+    mut pos: (isize, isize),
+    mut dir: (isize, isize),
+) -> TraceResult {
+    let mut count = 0;
+
+    loop {
+        match map
+            .get_mut(pos.0 as usize)
+            .and_then(|row| row.get_mut(pos.1 as usize))
+        {
+            Some(MapItem::Wall) => {
+                // Go backwards
+                pos.0 -= dir.0;
+                pos.1 -= dir.1;
+
+                // Rotate
+                dir = rotate(dir);
+
+                // Go forwards
+                pos.0 += dir.0;
+                pos.1 += dir.1;
+            }
+            Some(item) => {
+                // Empty, Start or Seen
+                match item {
+                    MapItem::Empty | MapItem::Start => {
+                        count += 1;
+                        pos.0 += dir.0;
+                        pos.1 += dir.1;
+                        *item = MapItem::Seen(dir);
+                    }
+                    MapItem::Looper(prev_dir) | MapItem::Seen(prev_dir) => {
+                        if dir == *prev_dir {
+                            // Found a loop
+                            return TraceResult::Loop(count);
+                        }
+
+                        pos.0 += dir.0;
+                        pos.1 += dir.1;
+                    }
+                    MapItem::Wall => unreachable!(),
+                }
+            }
+            None => break,
+        }
+    }
+
+    TraceResult::Exit(count)
+}
 
 #[allow(
     clippy::cast_sign_loss,
@@ -65,67 +114,6 @@ pub fn parse(input: &str) -> Input {
     (map, start)
 }
 
-// Rotates a direction 90 degrees clockwise
-const fn rotate(dir: (isize, isize)) -> (isize, isize) {
-    (dir.1, -dir.0)
-}
-
-#[allow(
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::missing_panics_doc
-)]
-#[must_use]
-pub fn trace_route(
-    mut map: Map,
-    mut pos: (isize, isize),
-    mut dir: (isize, isize),
-) -> bool {
-    loop {
-        match map
-            .get_mut(pos.0 as usize)
-            .and_then(|row| row.get_mut(pos.1 as usize))
-        {
-            Some(MapItem::Wall) => {
-                // Go backwards
-                pos.0 -= dir.0;
-                pos.1 -= dir.1;
-
-                // Rotate
-                dir = rotate(dir);
-
-                // Go forwards
-                pos.0 += dir.0;
-                pos.1 += dir.1;
-            }
-            Some(item) => {
-                // Empty, Start or Seen
-                match item {
-                    MapItem::Empty | MapItem::Start => {
-                        pos.0 += dir.0;
-                        pos.1 += dir.1;
-                        *item = MapItem::Seen(dir);
-                    }
-                    MapItem::Seen(prev_dir) => {
-                        if dir == *prev_dir {
-                            // Found a loop
-                            return true;
-                        }
-
-                        pos.0 += dir.0;
-                        pos.1 += dir.1;
-                    }
-                    MapItem::Wall => unreachable!(),
-                }
-            }
-            None => break,
-        }
-    }
-
-    false
-}
-
 #[allow(
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation,
@@ -134,48 +122,10 @@ pub fn trace_route(
 )]
 #[must_use]
 pub fn part1(input: &Input) -> usize {
-    let mut map: Vec<Vec<MapItem>> = input.0.clone();
-    let mut pos = input.1;
-    let mut dir = (-1, 0);
-    let mut count = 0;
-
-    loop {
-        match map
-            .get_mut(pos.0 as usize)
-            .and_then(|row| row.get_mut(pos.1 as usize))
-        {
-            Some(MapItem::Wall) => {
-                // Go backwards
-                pos.0 -= dir.0;
-                pos.1 -= dir.1;
-
-                // Rotate
-                dir = rotate(dir);
-
-                // Go forwards
-                pos.0 += dir.0;
-                pos.1 += dir.1;
-            }
-            Some(item) => {
-                // Empty, Start or Seen
-                match item {
-                    MapItem::Empty | MapItem::Start => {
-                        pos.0 += dir.0;
-                        pos.1 += dir.1;
-                        *item = MapItem::Seen(dir);
-                    }
-                    MapItem::Seen(_) => {
-                        pos.0 += dir.0;
-                        pos.1 += dir.1;
-                    }
-                    MapItem::Wall => unreachable!(),
-                }
-            }
-            None => break,
-        }
+    match trace_route(input.0.clone(), input.1, (-1, 0)) {
+        TraceResult::Loop(_) => 0,
+        TraceResult::Exit(count) => count,
     }
-
-    count
 }
 
 #[allow(
@@ -187,8 +137,8 @@ pub fn part1(input: &Input) -> usize {
 #[must_use]
 pub fn part2(input: &Input) -> usize {
     let mut map: Vec<Vec<MapItem>> = input.0.clone();
-    let mut prev_pos = input.1;
     let mut pos = input.1;
+    let mut prev_pos;
     let mut dir = (-1, 0);
     let mut count = 0;
 
@@ -221,7 +171,7 @@ pub fn part2(input: &Input) -> usize {
                         pos.1 += dir.1;
                         *item = MapItem::Seen(dir);
                     }
-                    MapItem::Seen(_) => {
+                    MapItem::Looper(_) | MapItem::Seen(_) => {
                         prev_pos = pos;
 
                         pos.0 += dir.0;
@@ -236,17 +186,36 @@ pub fn part2(input: &Input) -> usize {
         // Redo the calculations but attempt to place a barrier at every
         // location. If we come across a cell that we've already seen in
         // the same direction, we know we've found a loop.
-        let prev = map[prev_pos.0 as usize][prev_pos.1 as usize];
+
+        if matches!(
+            map[prev_pos.0 as usize][prev_pos.1 as usize],
+            MapItem::Looper(_)
+        ) {
+            continue;
+        }
+
+        let MapItem::Seen(prev) = map[prev_pos.0 as usize][prev_pos.1 as usize]
+        else {
+            unreachable!()
+        };
+
         map[prev_pos.0 as usize][prev_pos.1 as usize] = MapItem::Wall;
-        if trace_route(map.clone(), prev_pos, dir) {
+
+        if prev_pos != input.1
+            && matches!(
+                trace_route(map.clone(), prev_pos, dir),
+                TraceResult::Loop(_)
+            )
+        {
             count += 1;
         }
-        map[prev_pos.0 as usize][prev_pos.1 as usize] = prev;
+
+        map[prev_pos.0 as usize][prev_pos.1 as usize] = MapItem::Looper(prev);
     }
 
     count
 }
 
 // For my input, the correct answer is:
-// Part 1:
+// Part 1: 5199
 // Part 2:
