@@ -26,7 +26,7 @@ macro_rules! bench {
                         panic!("Failed to read input from {}", path.display());
                     };
 
-                    data
+                    data.trim_end().to_string()
                 })
             }
 

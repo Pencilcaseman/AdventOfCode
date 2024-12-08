@@ -40,6 +40,9 @@ fn main() {
             continue;
         };
 
+        // Trim whitespace
+        let data = data.trim_end().to_string();
+
         let start = std::time::Instant::now();
         let (part1, part2) = runner(&data);
         let elapsed = start.elapsed();
