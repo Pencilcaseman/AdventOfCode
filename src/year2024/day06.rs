@@ -226,7 +226,7 @@ type FastHashSet<T> = HashSet<T, FxBuildHasher>;
 
 type Input = (Vec<Vec<u8>>, (usize, usize), (usize, usize));
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
     Up,
     Down,
@@ -516,8 +516,7 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
     let mut grid = grid.clone();
     let mut pos = (pos.0 as isize, pos.1 as isize);
     let mut dir = Direction::Up;
-
-    let mut count = 0;
+    let mut path = Vec::with_capacity(4096);
 
     loop {
         let next = pos + dir;
@@ -537,15 +536,71 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
             }
             b'.' => {
                 grid[next.0 as usize][next.1 as usize] = b'^';
-                count += 1;
+            }
+            _ => {}
+        }
+
+        path.push((pos, dir));
+        pos = next;
+    }
+
+    path.iter()
+        .filter(|(pos, dir)| is_loop(&grid, (*rows, *cols), *pos, *dir))
+        .count()
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::match_on_vec_items
+)]
+#[must_use]
+pub fn is_loop(
+    grid: &[Vec<u8>],
+    size: (usize, usize),
+    mut pos: (isize, isize),
+    mut dir: Direction,
+) -> bool {
+    let mut grid = grid.to_vec();
+    let mut seen = FastHashSet::with_capacity_and_hasher(
+        size.0 * size.1,
+        FxBuildHasher::default(),
+    );
+
+    // Mark the starting position as an obstacle
+    grid[pos.0 as usize][pos.1 as usize] = b'#';
+
+    loop {
+        // If we've seen this position before in this direction, we've found a
+        // loop
+        if !seen.insert((pos, dir)) {
+            return true;
+        }
+
+        let next = pos + dir;
+
+        if next.0 < 0
+            || next.0 >= size.0 as isize
+            || next.1 < 0
+            || next.1 >= size.1 as isize
+        {
+            return false;
+        }
+
+        match grid[next.0 as usize][next.1 as usize] {
+            b'#' => {
+                dir = dir.rotate();
+                continue;
+            }
+            b'.' => {
+                grid[next.0 as usize][next.1 as usize] = b'^';
             }
             _ => {}
         }
 
         pos = next;
     }
-
-    count
 }
 
 // For my input, the correct answer is:

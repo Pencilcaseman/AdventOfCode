@@ -71,20 +71,24 @@ fn test_part1() {
     assert_eq!(part1(&input), 41);
 }
 
-// #[test]
-// fn test_contains_loop() {
-//     let input = parse(CONTAINS_LOOP);
-//     assert!(matches!(
-//         trace_route(input.0.clone(), (3, 2), (-1, 0)),
-//         TraceResult::Loop(_)
-//     ));
-//
-//     let input = parse(MINIMAL_PART_2);
-//     assert!(matches!(
-//         trace_route(input.0.clone(), (3, 2), (-1, 0)),
-//         TraceResult::Exit(_)
-//     ));
-// }
+#[test]
+fn test_contains_loop() {
+    let input = parse(CONTAINS_LOOP);
+    assert!(is_loop(
+        &input.0,
+        (input.0.len(), input.0[0].len()),
+        (input.1 .0 as isize, input.1 .1 as isize),
+        Direction::Up
+    ));
+
+    let input = parse(MINIMAL_PART_2);
+    assert!(!is_loop(
+        &input.0,
+        (input.0.len(), input.0[0].len()),
+        (input.1 .0 as isize, input.1 .1 as isize),
+        Direction::Up
+    ));
+}
 
 #[test]
 fn test_part2_minimal() {
