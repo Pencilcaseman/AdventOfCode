@@ -6,224 +6,6 @@ use fxhash::FxBuildHasher;
 
 type FastHashSet<T> = HashSet<T, FxBuildHasher>;
 
-// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// pub enum MapItem {
-//     Empty,
-//     Wall,
-//     Start,
-//     Seen((isize, isize)),
-//     Looper((isize, isize)),
-// }
-//
-// type Map = Vec<Vec<MapItem>>;
-// type Input = (Map, (isize, isize));
-//
-// // Rotates a direction 90 degrees clockwise
-// const fn rotate(dir: (isize, isize)) -> (isize, isize) {
-//     (dir.1, -dir.0)
-// }
-//
-// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// pub enum TraceResult {
-//     Loop(usize),
-//     Exit(usize),
-// }
-//
-// #[allow(
-//     clippy::cast_sign_loss,
-//     clippy::cast_possible_truncation,
-//     clippy::cast_possible_wrap,
-//     clippy::missing_panics_doc
-// )]
-// #[must_use]
-// pub fn trace_route(
-//     mut map: Map,
-//     mut pos: (isize, isize),
-//     mut dir: (isize, isize),
-// ) -> TraceResult {
-//     let mut count = 0;
-//
-//     loop {
-//         match map
-//             .get_mut(pos.0 as usize)
-//             .and_then(|row| row.get_mut(pos.1 as usize))
-//         {
-//             Some(MapItem::Wall) => {
-//                 // Go backwards
-//                 pos.0 -= dir.0;
-//                 pos.1 -= dir.1;
-//
-//                 // Rotate
-//                 dir = rotate(dir);
-//
-//                 // Go forwards
-//                 pos.0 += dir.0;
-//                 pos.1 += dir.1;
-//             }
-//             Some(item) => {
-//                 // Empty, Start or Seen
-//                 match item {
-//                     MapItem::Empty | MapItem::Start => {
-//                         count += 1;
-//                         pos.0 += dir.0;
-//                         pos.1 += dir.1;
-//                         *item = MapItem::Seen(dir);
-//                     }
-//                     MapItem::Looper(prev_dir) | MapItem::Seen(prev_dir) => {
-//                         if dir == *prev_dir {
-//                             // Found a loop
-//                             return TraceResult::Loop(count);
-//                         }
-//
-//                         pos.0 += dir.0;
-//                         pos.1 += dir.1;
-//                     }
-//                     MapItem::Wall => unreachable!(),
-//                 }
-//             }
-//             None => break,
-//         }
-//     }
-//
-//     TraceResult::Exit(count)
-// }
-//
-// #[allow(
-//     clippy::cast_sign_loss,
-//     clippy::cast_possible_truncation,
-//     clippy::cast_possible_wrap
-// )]
-// #[must_use]
-// pub fn parse(input: &str) -> Input {
-//     let mut start = (0, 0);
-//
-//     let map = input
-//         .as_bytes()
-//         .split(|&b| b == b'\n')
-//         .enumerate()
-//         .map(|(row, line)| {
-//             line.iter()
-//                 .enumerate()
-//                 .map(|(col, c)| match c {
-//                     b'.' => MapItem::Empty,
-//                     b'#' => MapItem::Wall,
-//                     b'^' => {
-//                         start = (row as isize, col as isize);
-//                         MapItem::Start
-//                     }
-//                     _ => unreachable!(),
-//                 })
-//                 .collect()
-//         })
-//         .collect();
-//
-//     (map, start)
-// }
-//
-// #[allow(
-//     clippy::cast_sign_loss,
-//     clippy::cast_possible_truncation,
-//     clippy::cast_possible_wrap,
-//     clippy::missing_panics_doc
-// )]
-// #[must_use]
-// pub fn part1(input: &Input) -> usize {
-//     match trace_route(input.0.clone(), input.1, (-1, 0)) {
-//         TraceResult::Loop(_) => 0,
-//         TraceResult::Exit(count) => count,
-//     }
-// }
-//
-// #[allow(
-//     clippy::cast_sign_loss,
-//     clippy::cast_possible_truncation,
-//     clippy::cast_possible_wrap,
-//     clippy::missing_panics_doc
-// )]
-// #[must_use]
-// pub fn part2(input: &Input) -> usize {
-//     let mut map: Vec<Vec<MapItem>> = input.0.clone();
-//     let mut pos = input.1;
-//     let mut prev_pos;
-//     let mut dir = (-1, 0);
-//     let mut count = 0;
-//
-//     loop {
-//         match map
-//             .get_mut(pos.0 as usize)
-//             .and_then(|row| row.get_mut(pos.1 as usize))
-//         {
-//             Some(MapItem::Wall) => {
-//                 // Go backwards
-//                 pos.0 -= dir.0;
-//                 pos.1 -= dir.1;
-//
-//                 prev_pos = pos;
-//
-//                 // Rotate
-//                 dir = rotate(dir);
-//
-//                 // Go forwards
-//                 pos.0 += dir.0;
-//                 pos.1 += dir.1;
-//             }
-//             Some(item) => {
-//                 // Empty, Start or Seen
-//                 match item {
-//                     MapItem::Empty | MapItem::Start => {
-//                         prev_pos = pos;
-//
-//                         pos.0 += dir.0;
-//                         pos.1 += dir.1;
-//                         *item = MapItem::Seen(dir);
-//                     }
-//                     MapItem::Looper(_) | MapItem::Seen(_) => {
-//                         prev_pos = pos;
-//
-//                         pos.0 += dir.0;
-//                         pos.1 += dir.1;
-//                     }
-//                     MapItem::Wall => unreachable!(),
-//                 }
-//             }
-//             None => break,
-//         }
-//
-//         // Redo the calculations but attempt to place a barrier at every
-//         // location. If we come across a cell that we've already seen in
-//         // the same direction, we know we've found a loop.
-//
-//         if matches!(
-//             map[prev_pos.0 as usize][prev_pos.1 as usize],
-//             MapItem::Looper(_)
-//         ) {
-//             continue;
-//         }
-//
-//         let MapItem::Seen(prev) = map[prev_pos.0 as usize][prev_pos.1 as
-// usize]         else {
-//             unreachable!()
-//         };
-//
-//         map[prev_pos.0 as usize][prev_pos.1 as usize] = MapItem::Wall;
-//
-//         if prev_pos != input.1
-//             && matches!(
-//                 trace_route(map.clone(), prev_pos, dir),
-//                 TraceResult::Loop(_)
-//             )
-//         {
-//             count += 1;
-//         }
-//
-//         map[prev_pos.0 as usize][prev_pos.1 as usize] =
-// MapItem::Looper(prev);     }
-//
-//     count
-// }
-
-// type Input = (usize, usize);
-
 type Input = (Vec<Vec<u8>>, (usize, usize), (usize, usize));
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -306,36 +88,6 @@ impl std::ops::SubAssign<Direction> for (isize, isize) {
     }
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap
-)]
-fn traverse(
-    map: &[Vec<u8>],
-    table: &mut [Vec<isize>],
-    mut pos: (isize, isize),
-    dir: Direction,
-) {
-    let rows = map.len();
-    let cols = map[0].len();
-
-    let mut count = 0;
-
-    pos -= dir;
-
-    while pos.0 >= 0
-        && pos.0 < rows as isize
-        && pos.1 >= 0
-        && pos.1 < cols as isize
-        && map[pos.0 as usize][pos.1 as usize] != b'#'
-    {
-        table[pos.0 as usize][pos.1 as usize] = count;
-        count += 1;
-        pos -= dir;
-    }
-}
-
 impl std::ops::Index<Direction> for [Vec<Vec<isize>>; 4] {
     type Output = Vec<Vec<isize>>;
 
@@ -366,65 +118,6 @@ impl std::ops::IndexMut<Direction> for [Vec<Vec<isize>>; 4] {
     clippy::cast_possible_wrap
 )]
 pub fn parse(input: &str) -> Input {
-    // let byte_map: Vec<Vec<u8>> =
-    //     input.as_bytes().split(|&b| b ==
-    // b'\n').map(<[u8]>::to_vec).collect();
-    //
-    // let rows = byte_map.len();
-    // let cols = byte_map[0].len();
-    //
-    // let mut dir_steps: [Vec<Vec<isize>>; 4] = [
-    //     vec![vec![-1isize; cols]; rows],
-    //     vec![vec![-1isize; cols]; rows],
-    //     vec![vec![-1isize; cols]; rows],
-    //     vec![vec![-1isize; cols]; rows],
-    // ];
-    //
-    // for row in 0..rows {
-    //     for col in 0..cols {
-    //         if byte_map[row][col] == b'#' {
-    //             traverse(
-    //                 &byte_map,
-    //                 &mut dir_steps[Direction::Up],
-    //                 (row as isize, col as isize),
-    //                 Direction::Up,
-    //             );
-    //
-    //             traverse(
-    //                 &byte_map,
-    //                 &mut dir_steps[Direction::Down],
-    //                 (row as isize, col as isize),
-    //                 Direction::Down,
-    //             );
-    //
-    //             traverse(
-    //                 &byte_map,
-    //                 &mut dir_steps[Direction::Left],
-    //                 (row as isize, col as isize),
-    //                 Direction::Left,
-    //             );
-    //
-    //             traverse(
-    //                 &byte_map,
-    //                 &mut dir_steps[Direction::Right],
-    //                 (row as isize, col as isize),
-    //                 Direction::Right,
-    //             );
-    //         }
-    //     }
-    // }
-    //
-    // (0, 0)
-
-    // let grid: Vec<Vec<u8>> =
-    //     input.as_bytes().split(|&b| b ==
-    // b'\n').map(<[u8]>::to_vec).collect(); let start_idx =
-    // input.bytes().position(|b| b == b'^').unwrap(); let cols =
-    // input.bytes().position(|b| b == b'\n').unwrap() - 1;
-    // let pos = (start_idx / cols, start_idx % cols);
-    // let rows = input.as_bytes().len() / cols;
-    // (grid, pos, (rows, cols))
-
     let mut grid = Vec::with_capacity(128);
     let mut row = Vec::new();
     let mut pos = (0, 0);
@@ -518,35 +211,35 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
     let mut dir = Direction::Up;
     let mut path = Vec::with_capacity(4096);
 
-    loop {
+    while (pos + dir).0 >= 0
+        && (pos + dir).0 < *rows as isize
+        && (pos + dir).1 >= 0
+        && (pos + dir).1 < *cols as isize
+    {
+        let tmp = pos + dir;
+        if grid[tmp.0 as usize][tmp.1 as usize] == b'#' {
+            dir = dir.rotate();
+        }
+
         let next = pos + dir;
 
-        if next.0 < 0
-            || next.0 >= *rows as isize
-            || next.1 < 0
-            || next.1 >= *cols as isize
-        {
-            break;
+        if grid[next.0 as usize][next.1 as usize] == b'.' {
+            path.push((pos, dir));
+            grid[next.0 as usize][next.1 as usize] = b'^';
         }
 
-        match grid[next.0 as usize][next.1 as usize] {
-            b'#' => {
-                dir = dir.rotate();
-                continue;
-            }
-            b'.' => {
-                grid[next.0 as usize][next.1 as usize] = b'^';
-            }
-            _ => {}
-        }
-
-        path.push((pos, dir));
         pos = next;
     }
 
-    path.iter()
-        .filter(|(pos, dir)| is_loop(&grid, (*rows, *cols), *pos, *dir))
-        .count()
+    let mut count = 0;
+
+    for (pos, dir) in &path {
+        if is_loop(&grid, (*rows, *cols), *pos, *dir) {
+            count += 1;
+        }
+    }
+
+    count
 }
 
 #[allow(
@@ -558,49 +251,38 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
 #[must_use]
 pub fn is_loop(
     grid: &[Vec<u8>],
-    size: (usize, usize),
+    (rows, cols): (usize, usize),
     mut pos: (isize, isize),
     mut dir: Direction,
 ) -> bool {
     let mut grid = grid.to_vec();
-    let mut seen = FastHashSet::with_capacity_and_hasher(
-        size.0 * size.1,
-        FxBuildHasher::default(),
-    );
+    let mut seen =
+        FastHashSet::with_capacity_and_hasher(4096, FxBuildHasher::default());
 
-    // Mark the starting position as an obstacle
-    grid[pos.0 as usize][pos.1 as usize] = b'#';
+    // Place the obstacle directly in our path and rotate (as we will hit it)
+    let obstacle = pos + dir;
+    grid[obstacle.0 as usize][obstacle.1 as usize] = b'#';
 
-    loop {
-        // If we've seen this position before in this direction, we've found a
-        // loop
+    while (pos + dir).0 >= 0
+        && (pos + dir).0 < rows as isize
+        && (pos + dir).1 >= 0
+        && (pos + dir).1 < cols as isize
+    {
         if !seen.insert((pos, dir)) {
             return true;
         }
 
+        let tmp = pos + dir;
+        if grid[tmp.0 as usize][tmp.1 as usize] == b'#' {
+            dir = dir.rotate();
+            continue;
+        }
+
         let next = pos + dir;
-
-        if next.0 < 0
-            || next.0 >= size.0 as isize
-            || next.1 < 0
-            || next.1 >= size.1 as isize
-        {
-            return false;
-        }
-
-        match grid[next.0 as usize][next.1 as usize] {
-            b'#' => {
-                dir = dir.rotate();
-                continue;
-            }
-            b'.' => {
-                grid[next.0 as usize][next.1 as usize] = b'^';
-            }
-            _ => {}
-        }
-
         pos = next;
     }
+
+    false
 }
 
 // For my input, the correct answer is:
