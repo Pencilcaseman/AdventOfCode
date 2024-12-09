@@ -30,6 +30,10 @@ strip = true
 debug = false
 debug-assertions = false
 
+[profile.profile]
+inherits = "release"
+debug = true
+
 [[bench]]
 name = "benchmark"
 harness = false
