@@ -10,6 +10,7 @@ colored = "2.1.0"
 criterion = { version = "0.5.1", features = ["real_blackbox"] }
 fxhash = "0.2.1"
 num-traits = { version = "0.2.19", features = ["i128"] }
+rayon = "1.10.0"
 
 [dev-dependencies]
 

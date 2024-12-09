@@ -93,36 +93,45 @@ fn test_part1() {
 fn test_contains_loop() {
     let input = parse(CONTAINS_LOOP);
 
-    let mut grid = input.0;
+    // let mut grid = input.0;
+    let grid = input.0;
+    let skipper = Skipper::from(&grid);
     let pos = (input.1 .0 as isize, input.1 .1 as isize);
     let size = input.2;
     let dir = Direction::Up;
 
-    assert!(is_loop(&mut grid, pos, size, dir));
+    // assert!(is_loop(&mut grid, pos, size, dir));
+    assert!(is_loop(&skipper, pos, size, dir));
 }
 
 #[test]
 fn test_contains_no_loop() {
     let input = parse(MINIMAL_PART_2);
 
-    let mut grid = input.0;
+    // let mut grid = input.0;
+    let grid = input.0;
+    let skipper = Skipper::from(&grid);
     let pos = (input.1 .0 as isize, input.1 .1 as isize);
     let size = input.2;
     let dir = Direction::Up;
 
-    assert!(!is_loop(&mut grid, pos, size, dir));
+    // assert!(!is_loop(&mut grid, pos, size, dir));
+    assert!(!is_loop(&skipper, pos, size, dir));
 }
 
 #[test]
 fn test_contains_loop_2() {
     let input = parse(CONTAINS_LOOP_2);
 
-    let mut grid = input.0;
+    // let mut grid = input.0;
+    let grid = input.0;
+    let skipper = Skipper::from(&grid);
     let pos = (input.1 .0 as isize, input.1 .1 as isize);
     let size = input.2;
     let dir = Direction::Up;
 
-    assert!(is_loop(&mut grid, pos, size, dir));
+    // assert!(is_loop(&mut grid, pos, size, dir));
+    assert!(is_loop(&skipper, pos, size, dir));
 }
 
 #[test]
