@@ -117,6 +117,7 @@ impl std::ops::IndexMut<Direction> for [Vec<Vec<isize>>; 4] {
     clippy::cast_sign_loss,
     clippy::cast_possible_wrap
 )]
+#[must_use]
 pub fn parse(input: &str) -> Input {
     let mut grid = Vec::with_capacity(128);
     let mut row = Vec::new();
@@ -234,7 +235,7 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
     let mut count = 0;
 
     for (pos, dir) in &path {
-        if is_loop(&grid, (*rows, *cols), *pos, *dir) {
+        if is_loop(&mut grid, *pos, (*rows, *cols), *dir) {
             count += 1;
         }
     }
@@ -250,17 +251,16 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
 )]
 #[must_use]
 pub fn is_loop(
-    grid: &[Vec<u8>],
-    (rows, cols): (usize, usize),
+    grid: &mut [Vec<u8>],
     mut pos: (isize, isize),
+    (rows, cols): (usize, usize),
     mut dir: Direction,
 ) -> bool {
-    let mut grid = grid.to_vec();
     let mut seen =
         FastHashSet::with_capacity_and_hasher(4096, FxBuildHasher::default());
 
-    // Place the obstacle directly in our path and rotate (as we will hit it)
     let obstacle = pos + dir;
+    let prev = grid[obstacle.0 as usize][obstacle.1 as usize];
     grid[obstacle.0 as usize][obstacle.1 as usize] = b'#';
 
     while (pos + dir).0 >= 0
@@ -269,6 +269,7 @@ pub fn is_loop(
         && (pos + dir).1 < cols as isize
     {
         if !seen.insert((pos, dir)) {
+            grid[obstacle.0 as usize][obstacle.1 as usize] = prev;
             return true;
         }
 
@@ -282,6 +283,7 @@ pub fn is_loop(
         pos = next;
     }
 
+    grid[obstacle.0 as usize][obstacle.1 as usize] = prev;
     false
 }
 
