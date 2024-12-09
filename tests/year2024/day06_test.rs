@@ -10,6 +10,13 @@ const MINIMAL_INPUT: &str = "\
 ^...
 ....";
 
+const EXAMPLE_LOOPBACK: &str = "\
+....#....
+.....#...
+....^....
+.........
+....#....";
+
 // .#...
 // .+-+#
 // O^-+.
@@ -22,11 +29,16 @@ const MINIMAL_PART_2: &str = "\
 .....#..";
 
 const CONTAINS_LOOP: &str = "\
-..#.....
-......#.
 ........
-.#^.....
+..^...#.
+........
+.#......
 .....#..";
+
+const CONTAINS_LOOP_2: &str = "\
+...........
+.#^......#.
+........#..";
 
 const EXAMPLE_INPUT: &str = "\
 ....#.....
@@ -66,6 +78,12 @@ fn test_part1_minimal() {
 }
 
 #[test]
+fn test_part1_loopback() {
+    let input = parse(EXAMPLE_LOOPBACK);
+    assert_eq!(part1(&input), 7);
+}
+
+#[test]
 fn test_part1() {
     let input = parse(EXAMPLE_INPUT);
     assert_eq!(part1(&input), 41);
@@ -80,9 +98,23 @@ fn test_contains_loop() {
         (input.1 .0 as isize, input.1 .1 as isize),
         Direction::Up
     ));
+}
 
+#[test]
+fn test_contains_no_loop() {
     let input = parse(MINIMAL_PART_2);
     assert!(!is_loop(
+        &input.0,
+        (input.0.len(), input.0[0].len()),
+        (input.1 .0 as isize, input.1 .1 as isize),
+        Direction::Up
+    ));
+}
+
+#[test]
+fn test_contains_loop_2() {
+    let input = parse(CONTAINS_LOOP_2);
+    assert!(is_loop(
         &input.0,
         (input.0.len(), input.0[0].len()),
         (input.1 .0 as isize, input.1 .1 as isize),
