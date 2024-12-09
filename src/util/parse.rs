@@ -228,3 +228,18 @@ where
 
     Some(if sign { -res } else { res })
 }
+
+pub trait ParseOps {
+    fn iter_unsigned<T: util::integer::Unsigned>(&self) -> ParseUnsigned<T>;
+    fn iter_signed<T: util::integer::Signed>(&self) -> ParseSigned<T>;
+}
+
+impl ParseOps for &str {
+    fn iter_unsigned<T: util::integer::Unsigned>(&self) -> ParseUnsigned<T> {
+        ParseUnsigned::new(self.bytes())
+    }
+
+    fn iter_signed<T: util::integer::Signed>(&self) -> ParseSigned<T> {
+        ParseSigned::new(self.bytes())
+    }
+}

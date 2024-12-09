@@ -46,6 +46,6 @@ macro_rules! impl_trait {
     };
 }
 
-impl_integer!(u8, u16, i16, u32, i32, u64, i64, u128, i128);
-impl_trait!(Signed, i16, i32, i64, i128);
-impl_trait!(Unsigned, u8, u16, u32, u64, u128);
+impl_integer!(u8, u16, i16, u32, i32, u64, i64, u128, i128, usize, isize);
+impl_trait!(Signed, i16, i32, i64, i128, isize);
+impl_trait!(Unsigned, u8, u16, u32, u64, u128, usize);
