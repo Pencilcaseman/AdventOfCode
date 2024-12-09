@@ -7,6 +7,7 @@ use rayon::prelude::*;
 
 type FastHashSet<T> = HashSet<T, FxBuildHasher>;
 type Input = (usize, usize);
+type SeenHashSet = FastHashSet<((isize, isize), Direction)>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
@@ -88,30 +89,6 @@ impl std::ops::SubAssign<Direction> for (isize, isize) {
     }
 }
 
-impl std::ops::Index<Direction> for [Vec<Vec<isize>>; 4] {
-    type Output = Vec<Vec<isize>>;
-
-    fn index(&self, dir: Direction) -> &Self::Output {
-        match dir {
-            Direction::Up => &self[0],
-            Direction::Down => &self[1],
-            Direction::Left => &self[2],
-            Direction::Right => &self[3],
-        }
-    }
-}
-
-impl std::ops::IndexMut<Direction> for [Vec<Vec<isize>>; 4] {
-    fn index_mut(&mut self, dir: Direction) -> &mut Self::Output {
-        match dir {
-            Direction::Up => &mut self[0],
-            Direction::Down => &mut self[1],
-            Direction::Left => &mut self[2],
-            Direction::Right => &mut self[3],
-        }
-    }
-}
-
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -153,43 +130,19 @@ pub fn parse(input: &str) -> Input {
     let rows = grid.len();
     let cols = grid[0].len();
 
-    let mut path = Vec::with_capacity(4096);
+    let mut path = Vec::with_capacity(8192);
     let mut dir = Direction::Up;
+    let mut tmp_pos = pos + dir;
 
-    // loop {
-    //     let next = pos + dir;
-    //
-    //     if next.0 < 0
-    //         || next.0 >= rows as isize
-    //         || next.1 < 0
-    //         || next.1 >= cols as isize
-    //     {
-    //         break;
-    //     }
-    //
-    //     match grid[next.0 as usize][next.1 as usize] {
-    //         b'#' => {
-    //             dir = dir.rotate();
-    //             continue;
-    //         }
-    //         b'.' => {
-    //             grid[next.0 as usize][next.1 as usize] = b'^';
-    //             part1 += 1;
-    //         }
-    //         _ => {}
-    //     }
-    //
-    //     pos = next;
-    // }
-
-    while (pos + dir).0 >= 0
-        && (pos + dir).0 < rows as isize
-        && (pos + dir).1 >= 0
-        && (pos + dir).1 < cols as isize
+    while tmp_pos.0 >= 0
+        && tmp_pos.0 < rows as isize
+        && tmp_pos.1 >= 0
+        && tmp_pos.1 < cols as isize
     {
-        let tmp = pos + dir;
-        if grid[tmp.0 as usize][tmp.1 as usize] == b'#' {
+        if grid[tmp_pos.0 as usize][tmp_pos.1 as usize] == b'#' {
             dir = dir.rotate();
+            tmp_pos = pos + dir;
+            continue;
         }
 
         let next = pos + dir;
@@ -200,15 +153,27 @@ pub fn parse(input: &str) -> Input {
         }
 
         pos = next;
+        tmp_pos = pos + dir;
     }
 
     let skipper = Skipper::from(&grid);
 
     let part1 = path.len() + 1;
     let part2 = path
-        .par_iter()
-        .filter(|(pos, dir)| is_loop(&skipper, *pos, (rows, cols), *dir))
-        .count();
+        .par_chunks(64)
+        .map(|chunk| {
+            let mut seen = SeenHashSet::default();
+
+            let mut count = 0;
+            for (pos, dir) in chunk {
+                seen.clear();
+                if is_loop(&skipper, *pos, (rows, cols), *dir, &mut seen) {
+                    count += 1;
+                }
+            }
+            count
+        })
+        .sum();
 
     (part1, part2)
 }
@@ -235,10 +200,8 @@ pub fn is_loop(
     mut pos: (isize, isize),
     (rows, cols): (usize, usize),
     mut dir: Direction,
+    seen: &mut SeenHashSet,
 ) -> bool {
-    let mut seen =
-        FastHashSet::with_capacity_and_hasher(4096, FxBuildHasher::default());
-
     let obstacle = pos + dir;
 
     while pos.0 >= 0
