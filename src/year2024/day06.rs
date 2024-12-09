@@ -3,10 +3,10 @@
 use std::collections::HashSet;
 
 use fxhash::FxBuildHasher;
+use rayon::prelude::*;
 
 type FastHashSet<T> = HashSet<T, FxBuildHasher>;
-
-type Input = (Vec<Vec<u8>>, (usize, usize), (usize, usize));
+type Input = (usize, usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
@@ -153,69 +153,39 @@ pub fn parse(input: &str) -> Input {
     let rows = grid.len();
     let cols = grid[0].len();
 
-    (grid, pos, (rows, cols))
-}
-
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
-    clippy::match_on_vec_items
-)]
-#[must_use]
-pub fn part1((grid, pos, (rows, cols)): &Input) -> usize {
-    let mut grid = grid.clone();
-    let mut pos = (pos.0 as isize, pos.1 as isize);
-    let mut dir = Direction::Up;
-
-    let mut count = 1; // Include the start position
-
-    loop {
-        let next = pos + dir;
-
-        if next.0 < 0
-            || next.0 >= *rows as isize
-            || next.1 < 0
-            || next.1 >= *cols as isize
-        {
-            break;
-        }
-
-        match grid[next.0 as usize][next.1 as usize] {
-            b'#' => {
-                dir = dir.rotate();
-                continue;
-            }
-            b'.' => {
-                grid[next.0 as usize][next.1 as usize] = b'^';
-                count += 1;
-            }
-            _ => {}
-        }
-
-        pos = next;
-    }
-
-    count
-}
-
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
-    clippy::match_on_vec_items
-)]
-#[must_use]
-pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
-    let mut grid = grid.clone();
-    let mut pos = (pos.0 as isize, pos.1 as isize);
-    let mut dir = Direction::Up;
     let mut path = Vec::with_capacity(4096);
+    let mut dir = Direction::Up;
+
+    // loop {
+    //     let next = pos + dir;
+    //
+    //     if next.0 < 0
+    //         || next.0 >= rows as isize
+    //         || next.1 < 0
+    //         || next.1 >= cols as isize
+    //     {
+    //         break;
+    //     }
+    //
+    //     match grid[next.0 as usize][next.1 as usize] {
+    //         b'#' => {
+    //             dir = dir.rotate();
+    //             continue;
+    //         }
+    //         b'.' => {
+    //             grid[next.0 as usize][next.1 as usize] = b'^';
+    //             part1 += 1;
+    //         }
+    //         _ => {}
+    //     }
+    //
+    //     pos = next;
+    // }
 
     while (pos + dir).0 >= 0
-        && (pos + dir).0 < *rows as isize
+        && (pos + dir).0 < rows as isize
         && (pos + dir).1 >= 0
-        && (pos + dir).1 < *cols as isize
+        && (pos + dir).1 < cols as isize
     {
         let tmp = pos + dir;
         if grid[tmp.0 as usize][tmp.1 as usize] == b'#' {
@@ -232,15 +202,25 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
         pos = next;
     }
 
-    let mut count = 0;
+    let skipper = Skipper::from(&grid);
 
-    for (pos, dir) in &path {
-        if is_loop(&mut grid, *pos, (*rows, *cols), *dir) {
-            count += 1;
-        }
-    }
+    let part1 = path.len() + 1;
+    let part2 = path
+        .par_iter()
+        .filter(|(pos, dir)| is_loop(&skipper, *pos, (rows, cols), *dir))
+        .count();
 
-    count
+    (part1, part2)
+}
+
+#[must_use]
+pub const fn part1(input: &Input) -> usize {
+    input.0
+}
+
+#[must_use]
+pub const fn part2(input: &Input) -> usize {
+    input.1
 }
 
 #[allow(
@@ -251,7 +231,7 @@ pub fn part2((grid, pos, (rows, cols)): &Input) -> usize {
 )]
 #[must_use]
 pub fn is_loop(
-    grid: &mut [Vec<u8>],
+    skipper: &Skipper,
     mut pos: (isize, isize),
     (rows, cols): (usize, usize),
     mut dir: Direction,
@@ -260,31 +240,159 @@ pub fn is_loop(
         FastHashSet::with_capacity_and_hasher(4096, FxBuildHasher::default());
 
     let obstacle = pos + dir;
-    let prev = grid[obstacle.0 as usize][obstacle.1 as usize];
-    grid[obstacle.0 as usize][obstacle.1 as usize] = b'#';
 
-    while (pos + dir).0 >= 0
-        && (pos + dir).0 < rows as isize
-        && (pos + dir).1 >= 0
-        && (pos + dir).1 < cols as isize
+    while pos.0 >= 0
+        && pos.0 < rows as isize
+        && pos.1 >= 0
+        && pos.1 < cols as isize
     {
         if !seen.insert((pos, dir)) {
-            grid[obstacle.0 as usize][obstacle.1 as usize] = prev;
             return true;
         }
 
-        let tmp = pos + dir;
-        if grid[tmp.0 as usize][tmp.1 as usize] == b'#' {
-            dir = dir.rotate();
-            continue;
+        match dir {
+            Direction::Up => {
+                let target = skipper.up[pos.0 as usize][pos.1 as usize];
+
+                if pos.1 == obstacle.1
+                    && pos.0 > obstacle.0
+                    && obstacle.0 >= target
+                {
+                    pos.0 = obstacle.0 + 1;
+                } else {
+                    pos.0 = target;
+                }
+            }
+            Direction::Down => {
+                let target = skipper.down[pos.0 as usize][pos.1 as usize];
+
+                if pos.1 == obstacle.1
+                    && pos.0 < obstacle.0
+                    && obstacle.0 <= target
+                {
+                    pos.0 = obstacle.0 - 1;
+                } else {
+                    pos.0 = target;
+                }
+            }
+            Direction::Left => {
+                let target = skipper.left[pos.0 as usize][pos.1 as usize];
+
+                if pos.0 == obstacle.0
+                    && pos.1 > obstacle.1
+                    && obstacle.1 >= target
+                {
+                    pos.1 = obstacle.1 + 1;
+                } else {
+                    pos.1 = target;
+                }
+            }
+            Direction::Right => {
+                let target = skipper.right[pos.0 as usize][pos.1 as usize];
+
+                if pos.0 == obstacle.0
+                    && pos.1 < obstacle.1
+                    && obstacle.1 <= target
+                {
+                    pos.1 = obstacle.1 - 1;
+                } else {
+                    pos.1 = target;
+                }
+            }
         }
 
-        let next = pos + dir;
-        pos = next;
+        dir = dir.rotate();
     }
 
-    grid[obstacle.0 as usize][obstacle.1 as usize] = prev;
     false
+}
+
+pub struct Skipper {
+    up: Vec<Vec<isize>>,
+    down: Vec<Vec<isize>>,
+    left: Vec<Vec<isize>>,
+    right: Vec<Vec<isize>>,
+}
+
+impl Skipper {
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_wrap,
+        clippy::match_on_vec_items
+    )]
+    #[must_use]
+    pub fn from(grid: &[Vec<u8>]) -> Self {
+        let mut up = vec![vec![0; grid[0].len()]; grid.len()];
+        let mut down = vec![vec![0; grid[0].len()]; grid.len()];
+        let mut left = vec![vec![0; grid[0].len()]; grid.len()];
+        let mut right = vec![vec![0; grid[0].len()]; grid.len()];
+
+        let rows = grid.len();
+        let cols = grid[0].len();
+
+        for col in 0..cols {
+            let mut last = -1;
+
+            for row in 0..rows {
+                match grid[row][col] {
+                    b'#' => {
+                        last = row as isize + 1;
+                    }
+                    _ => {
+                        up[row][col] = last;
+                    }
+                }
+            }
+        }
+
+        for col in 0..cols {
+            let mut last = rows as isize;
+
+            for row in (0..rows).rev() {
+                match grid[row][col] {
+                    b'#' => {
+                        last = row as isize - 1;
+                    }
+                    _ => {
+                        down[row][col] = last;
+                    }
+                }
+            }
+        }
+
+        for row in 0..rows {
+            let mut last = -1;
+
+            for col in 0..cols {
+                match grid[row][col] {
+                    b'#' => {
+                        last = col as isize + 1;
+                    }
+                    _ => {
+                        left[row][col] = last;
+                    }
+                }
+            }
+        }
+
+        for row in 0..rows {
+            let mut last = cols as isize;
+
+            for col in (0..cols).rev() {
+                match grid[row][col] {
+                    b'#' => {
+                        last = col as isize - 1;
+                    }
+                    _ => {
+                        right[row][col] = last;
+                    }
+                }
+            }
+        }
+
+        Self { up, down, left, right }
+    }
 }
 
 // For my input, the correct answer is:
