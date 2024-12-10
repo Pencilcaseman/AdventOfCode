@@ -11,22 +11,14 @@ pub fn parse(input: &str) -> Input {
 
 #[must_use]
 pub const fn ends_with(num: usize, end: usize) -> Option<usize> {
-    if end == 0 && num % 10 == 0 {
+    if end == 0 {
         return Some(num / 10);
-    } else if num < end {
-        return None;
-    } else if num == end {
-        return Some(0);
     }
 
-    let digits = end.ilog10() + 1;
-    let pow10 = 10usize.pow(digits);
+    let next_pow_10 = 10usize.pow(end.ilog10() + 1);
 
-    let div = (num - end) / pow10;
-    let rem = (num - end) % pow10;
-
-    if rem == 0 {
-        Some(div)
+    if num % next_pow_10 == end {
+        Some(num / next_pow_10)
     } else {
         None
     }
