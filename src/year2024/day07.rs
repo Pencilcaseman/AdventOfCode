@@ -30,22 +30,6 @@ pub const fn ends_with(num: usize, end: usize) -> Option<usize> {
     }
 }
 
-// fn is_valid(result: usize, nums: &[usize], concat: bool) -> bool {
-//     let last = nums[nums.len() - 1];
-//
-//     if nums.len() == 1 {
-//         return result == last;
-//     }
-//
-//     (result > last && is_valid(result - last, &nums[..nums.len() - 1],
-// concat))         || (result % last == 0
-//             && is_valid(result / last, &nums[..nums.len() - 1], concat))
-//         || (concat
-//             && ends_with(result, last).is_some_and(|rem| {
-//                 is_valid(rem, &nums[..nums.len() - 1], concat)
-//             }))
-// }
-
 fn is_valid(
     result: usize,
     nums: &[usize],
@@ -64,10 +48,10 @@ fn is_valid(
         (concat
             && ends_with(result, last)
                 .is_some_and(|rem| is_valid(rem, nums, last_idx - 1, concat)))
-            || (result > last
-                && is_valid(result - last, nums, last_idx - 1, concat))
             || (result % last == 0
                 && is_valid(result / last, nums, last_idx - 1, concat))
+            || (result > last
+                && is_valid(result - last, nums, last_idx - 1, concat))
     }
 }
 
