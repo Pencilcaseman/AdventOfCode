@@ -55,27 +55,20 @@ fn is_valid(
     let last = nums[last_idx];
 
     if last_idx == 0 {
-        return result == last;
+        result == last
+    } else {
+        // Checking for concatenation first gives a slight performance
+        // improvement, since we know the test failed with only ADD and
+        // MUL, so concatenation is required for this to be a
+        // potentially valid solution.
+        (concat
+            && ends_with(result, last)
+                .is_some_and(|rem| is_valid(rem, nums, last_idx - 1, concat)))
+            || (result > last
+                && is_valid(result - last, nums, last_idx - 1, concat))
+            || (result % last == 0
+                && is_valid(result / last, nums, last_idx - 1, concat))
     }
-
-    // Checking for concatenation first gives a slight performance improvement,
-    // since we know the test failed with only ADD and MUL, so concatenation is
-    // required for this to be a potentially valid solution.
-    // (concat
-    //     && ends_with(result, last)
-    //         .is_some_and(|rem| is_valid(rem, nums, last_idx - 1, concat)))
-    //     || (result > last
-    //         && is_valid(result - last, nums, last_idx - 1, concat))
-    //     || (result % last == 0
-    //         && is_valid(result / last, nums, last_idx - 1, concat))
-
-    (concat
-        && result % next_pow_10(last) == last
-        && is_valid(result / next_pow_10(last), nums, last_idx - 1, concat))
-        || (result > last
-            && is_valid(result - last, nums, last_idx - 1, concat))
-        || (result % last == 0
-            && is_valid(result / last, nums, last_idx - 1, concat))
 }
 
 #[must_use]
