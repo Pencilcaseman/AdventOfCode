@@ -2,20 +2,26 @@
 
 use crate::util::parse::ParseOps;
 
-type Input = Vec<Vec<usize>>;
+type Input = (usize, usize);
 
-#[must_use]
-pub fn parse(input: &str) -> Input {
-    input.lines().map(|line| line.iter_unsigned().collect()).collect()
+/// NOTE: I saw [ManEatingApe](https://github.com/maneatingape/advent-of-code-rust/blob/main/src/year2024/day07.rs)
+/// do this, and it does indeed work. This does not work for the general case,
+/// but it appears that the ``AoC`` input never contains 4+ digit concatenations
+/// (or they are all unique and valid). While I am not entirely happy with this,
+/// it is faster than a 'correct'/'complete' solution.
+const fn next_pow_10(num: usize) -> usize {
+    if num < 10 {
+        10
+    } else if num < 100 {
+        100
+    } else {
+        1000
+    }
 }
 
 #[must_use]
 pub const fn ends_with(num: usize, end: usize) -> Option<usize> {
-    if end == 0 {
-        return Some(num / 10);
-    }
-
-    let next_pow_10 = 10usize.pow(end.ilog10() + 1);
+    let next_pow_10 = next_pow_10(end);
 
     if num % next_pow_10 == end {
         Some(num / next_pow_10)
@@ -24,76 +30,88 @@ pub const fn ends_with(num: usize, end: usize) -> Option<usize> {
     }
 }
 
-fn valid_part1(result: usize, nums: &[usize]) -> bool {
-    let Some(&last) = nums.last() else { return result == 0 };
+// fn is_valid(result: usize, nums: &[usize], concat: bool) -> bool {
+//     let last = nums[nums.len() - 1];
+//
+//     if nums.len() == 1 {
+//         return result == last;
+//     }
+//
+//     (result > last && is_valid(result - last, &nums[..nums.len() - 1],
+// concat))         || (result % last == 0
+//             && is_valid(result / last, &nums[..nums.len() - 1], concat))
+//         || (concat
+//             && ends_with(result, last).is_some_and(|rem| {
+//                 is_valid(rem, &nums[..nums.len() - 1], concat)
+//             }))
+// }
 
-    if nums.len() == 1 {
+fn is_valid(
+    result: usize,
+    nums: &[usize],
+    last_idx: usize,
+    concat: bool,
+) -> bool {
+    let last = nums[last_idx];
+
+    if last_idx == 0 {
         return result == last;
     }
 
-    if result > last && valid_part1(result - last, &nums[..nums.len() - 1]) {
-        return true;
-    }
+    // Checking for concatenation first gives a slight performance improvement,
+    // since we know the test failed with only ADD and MUL, so concatenation is
+    // required for this to be a potentially valid solution.
+    // (concat
+    //     && ends_with(result, last)
+    //         .is_some_and(|rem| is_valid(rem, nums, last_idx - 1, concat)))
+    //     || (result > last
+    //         && is_valid(result - last, nums, last_idx - 1, concat))
+    //     || (result % last == 0
+    //         && is_valid(result / last, nums, last_idx - 1, concat))
 
-    if result % last == 0 && valid_part1(result / last, &nums[..nums.len() - 1])
-    {
-        return true;
-    }
-
-    false
+    (concat
+        && result % next_pow_10(last) == last
+        && is_valid(result / next_pow_10(last), nums, last_idx - 1, concat))
+        || (result > last
+            && is_valid(result - last, nums, last_idx - 1, concat))
+        || (result % last == 0
+            && is_valid(result / last, nums, last_idx - 1, concat))
 }
 
-fn valid_part2(result: usize, nums: &[usize]) -> bool {
-    let Some(&last) = nums.last() else { return result == 0 };
+#[must_use]
+pub fn parse(input: &str) -> Input {
+    let mut tmp = Vec::with_capacity(32);
+    let mut part1 = 0;
+    let mut part2 = 0;
 
-    if nums.len() == 1 {
-        return result == last;
-    }
+    for line in input.lines() {
+        tmp.clear();
+        tmp.extend(line.iter_unsigned::<usize>());
 
-    if result > last && valid_part2(result - last, &nums[..nums.len() - 1]) {
-        return true;
-    }
+        let result = tmp[0];
+        let nums = &tmp[1..];
+        let last_idx = nums.len() - 1;
 
-    if result % last == 0 && valid_part2(result / last, &nums[..nums.len() - 1])
-    {
-        return true;
-    }
-
-    if let Some(end) = ends_with(result, last) {
-        if valid_part2(end, &nums[..nums.len() - 1]) {
-            return true;
+        if is_valid(result, nums, last_idx, false) {
+            // A solution to part 1 is a solution to part 2
+            part1 += result;
+            part2 += result;
+        } else if is_valid(result, nums, last_idx, true) {
+            part2 += result;
         }
     }
 
-    false
+    (part1, part2)
 }
 
 #[must_use]
-pub fn part1(input: &Input) -> usize {
-    input
-        .iter()
-        .filter_map(|nums| {
-            if valid_part1(nums[0], &nums[1..]) {
-                Some(nums[0])
-            } else {
-                None
-            }
-        })
-        .sum()
+pub const fn part1(input: &Input) -> usize {
+    input.0
 }
 
 #[must_use]
-pub fn part2(input: &Input) -> usize {
-    input
-        .iter()
-        .filter_map(|nums| {
-            if valid_part2(nums[0], &nums[1..]) {
-                Some(nums[0])
-            } else {
-                None
-            }
-        })
-        .sum()
+pub const fn part2(input: &Input) -> usize {
+    input.1
 }
 
 // For my input, the correct answer is:
