@@ -23,11 +23,7 @@ const fn next_pow_10(num: usize) -> usize {
 pub const fn ends_with(num: usize, end: usize) -> Option<usize> {
     let next_pow_10 = next_pow_10(end);
 
-    if num % next_pow_10 == end {
-        Some(num / next_pow_10)
-    } else {
-        None
-    }
+    if num % next_pow_10 == end { Some(num / next_pow_10) } else { None }
 }
 
 fn is_valid(
