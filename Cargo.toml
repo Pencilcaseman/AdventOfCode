@@ -1,11 +1,11 @@
 [package]
 name = "aoc"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 atoi = "2.0.0"
-clap = { version = "4.5.22", features = ["derive"] }
+clap = { version = "4.5.23", features = ["derive"] }
 colored = "2.1.0"
 criterion = { version = "0.5.1", features = ["real_blackbox"] }
 fxhash = "0.2.1"
@@ -37,9 +37,4 @@ debug = true
 [[bench]]
 name = "benchmark"
 harness = false
-
-[lints.clippy]
-
-# Allow #[inline(always)] -- I have made the bold assumption that I know what I am doing
-inline_always = { level = "allow", priority = 1 }
 

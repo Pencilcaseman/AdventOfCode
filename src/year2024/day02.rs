@@ -33,11 +33,7 @@ pub const fn part2(input: &(i32, i32)) -> i32 {
 const fn delta((&a, &b): (&i32, &i32)) -> i32 {
     let diff = b - a;
 
-    if diff.abs() < 4 {
-        diff.signum()
-    } else {
-        0
-    }
+    if diff.abs() < 4 { diff.signum() } else { 0 }
 }
 
 fn solve_row(row: &[i32]) -> (i32, i32) {
