@@ -100,7 +100,6 @@ const fn partial_checksum(id: usize, start: usize, count: usize) -> usize {
 pub fn part1(input: &Input) -> usize {
     let mut left = 0;
     let mut right = input.len() - 1;
-    let mut available = 0;
     let mut needed = input[right];
     let mut block_idx = 0;
     let mut sum = 0;
@@ -108,7 +107,7 @@ pub fn part1(input: &Input) -> usize {
     while left < right {
         sum += partial_checksum(left / 2, block_idx, input[left]);
         block_idx += input[left];
-        available = input[left + 1];
+        let mut available = input[left + 1];
         left += 2;
 
         // Go backwards until no more space is available in the current empty
