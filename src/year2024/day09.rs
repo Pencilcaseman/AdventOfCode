@@ -1,64 +1,13 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
+use std::{cmp::Reverse, collections::BinaryHeap};
+
 type Input = Vec<usize>;
 
 #[must_use]
 pub fn parse(input: &str) -> Input {
     input.bytes().map(|b| (b - b'0') as usize).collect()
 }
-
-// #[must_use]
-// pub fn part1(input: &Input) -> usize {
-//     let mut real_index = 0;
-//     let mut sim_index = 0;
-//     let mut end_index = input.len() - 1;
-//     let mut is_value = true;
-//     let mut sum = 0;
-//
-//     let mut string = input.clone();
-//
-//     loop {
-//         if string[real_index] == 0 {
-//             end_index -= 2;
-//             continue;
-//         }
-//
-//         if is_value {
-//             sum += sim_index * (real_index / 2);
-//             string[real_index] -= 1;
-//         } else {
-//             sum += sim_index * (end_index / 2);
-//             string[real_index] -= 1;
-//             string[end_index] -= 1;
-//         }
-//
-//         while string[real_index] == 0 {
-//             real_index += 1;
-//             is_value = !is_value;
-//
-//             if real_index == input.len() {
-//                 break;
-//             }
-//         }
-//
-//         while string[end_index] == 0 {
-//             // Skip the gap
-//             end_index -= 2;
-//
-//             if end_index == 0 {
-//                 break;
-//             }
-//         }
-//
-//         if string[real_index] == 0 || string[end_index] == 0 {
-//             break;
-//         }
-//
-//         sim_index += 1;
-//     }
-//
-//     sum
-// }
 
 /// Returns the partial sum for a section
 ///
@@ -89,7 +38,7 @@ pub fn parse(input: &str) -> Input {
 ///
 /// Refactoring to use the count directly:
 /// LOOKUP = [0, 0, 1, 3, 6, 10, 15, 21, 28, 36]
-/// sum = x(s * n + LOOKUP[n])
+/// sum = x(s * count + LOOKUP[count])
 /// ```
 const fn partial_checksum(id: usize, start: usize, count: usize) -> usize {
     const LOOKUP: [usize; 10] = [0, 0, 1, 3, 6, 10, 15, 21, 28, 36];
@@ -140,7 +89,92 @@ pub fn part1(input: &Input) -> usize {
 
 #[must_use]
 pub fn part2(input: &Input) -> usize {
-    0
+    let mut heaps: [BinaryHeap<Reverse<usize>>; 10] = Default::default();
+    let mut sim_indices = vec![0; input.len()];
+    let mut sum = 0;
+
+    let mut sim_index = 0;
+    let mut real_index = 0;
+    while real_index + 1 < input.len() {
+        // Compute the current sum and then subtract from it to avoid
+        // recalculating
+        sum += partial_checksum(real_index / 2, sim_index, input[real_index]);
+
+        sim_indices[real_index] = sim_index;
+        sim_index += input[real_index];
+        sim_indices[real_index + 1] = sim_index;
+
+        let gap_size = input[real_index + 1];
+        heaps[gap_size].push(Reverse(sim_index));
+        sim_index += gap_size;
+
+        real_index += 2;
+    }
+
+    // Get the last element as well
+    sim_index += input[input.len() - 1];
+    sim_indices[input.len() - 1] = sim_index;
+    sum += partial_checksum(input.len() / 2, sim_index, input[input.len() - 1]);
+
+    println!("Initial sum: {sum}");
+
+    println!("{heaps:?}");
+
+    let mut right = input.len() - 1;
+    while right > 0 {
+        let needed = input[right];
+
+        // Find a gap at least as large as the required size
+        for size in needed..10 {
+            // println!(
+            //     "Checking size {size}: {:?} | {}",
+            //     heaps[size].peek(),
+            //     sim_indices[right]
+            // );
+
+            match heaps[size].peek() {
+                Some(gap_index) if gap_index.0 < sim_indices[right] => {
+                    // Move the block
+                    let Some(gap_index) = heaps[size].pop() else {
+                        unreachable!()
+                    };
+
+                    println!(
+                        "Move {needed} elements from {} to {}",
+                        sim_indices[right], gap_index.0
+                    );
+
+                    sum += partial_checksum(right / 2, gap_index.0, needed);
+                    sum -=
+                        partial_checksum(right / 2, sim_indices[right], needed);
+
+                    println!(
+                        "Adding: {}",
+                        partial_checksum(right / 2, gap_index.0, needed)
+                    );
+                    println!(
+                        "Removing: {}",
+                        partial_checksum(right / 2, sim_indices[right], needed)
+                    );
+
+                    let rem = size - needed;
+                    let rem_index = gap_index.0 + needed;
+                    heaps[rem].push(Reverse(rem_index));
+
+                    // Stop searching
+                    break;
+                }
+                _ => (),
+            }
+        }
+
+        right -= 2;
+    }
+
+    // println!("Heaps: {heaps:?}");
+
+    // todo!()
+    sum
 }
 
 // For my input, the correct answer is:
