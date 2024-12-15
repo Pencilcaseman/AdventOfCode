@@ -118,7 +118,7 @@ pub fn part2(input: &Input) -> usize {
 
     println!("Initial sum: {sum}");
 
-    println!("{heaps:?}");
+    // println!("{heaps:?}");
 
     let mut right = input.len() - 1;
     while right > 0 {
@@ -139,23 +139,23 @@ pub fn part2(input: &Input) -> usize {
                         unreachable!()
                     };
 
-                    println!(
-                        "Move {needed} elements from {} to {}",
-                        sim_indices[right], gap_index.0
-                    );
+                    // println!(
+                    //     "Move {needed} elements from {} to {}",
+                    //     sim_indices[right], gap_index.0
+                    // );
 
                     sum += partial_checksum(right / 2, gap_index.0, needed);
                     sum -=
                         partial_checksum(right / 2, sim_indices[right], needed);
 
-                    println!(
-                        "Adding: {}",
-                        partial_checksum(right / 2, gap_index.0, needed)
-                    );
-                    println!(
-                        "Removing: {}",
-                        partial_checksum(right / 2, sim_indices[right], needed)
-                    );
+                    // println!(
+                    //     "Adding: {}",
+                    //     partial_checksum(right / 2, gap_index.0, needed)
+                    // );
+                    // println!(
+                    //     "Removing: {}",
+                    //     partial_checksum(right / 2, sim_indices[right],
+                    // needed) );
 
                     let rem = size - needed;
                     let rem_index = gap_index.0 + needed;
