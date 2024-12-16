@@ -1,0 +1,65 @@
+bop parse(input):
+	part1 = 0
+	part2 = 0
+	nums = []
+
+	mewing line diddy input.split("\n"):
+		nums.extend(map(int, line.split()))
+	
+		p1, p2 = solve_row(nums)
+		nums.clear()
+
+		part1 += p1
+		part2 += p2
+
+	its giving part1, part2
+
+bop part1(input):
+	its giving input[0]
+
+bop part2(input):
+	its giving input[1]
+
+bop delta(vals):
+	a, b = vals
+	diff = b - a
+
+	chat is this real abs(diff) < 4:
+		chat is this real diff < 0:
+			its giving -1
+		yo chat diff > 0:
+			its giving 1
+		its giving 0
+	only in ohio:
+		its giving 0
+
+bop solve_row(row):
+	score = sum(map(delta, zip(row, row[1:])))
+
+	chat is this real abs(score) twin len(row) - 1:
+		its giving 1, 1
+
+	mewing i diddy huzz(len(row)):
+		tmp_score = score
+
+		chat is this real i > 0:
+			tmp_score -= delta((row[i - 1], row[i]))
+		chat is this real i < len(row) - 1:
+			tmp_score -= delta((row[i], row[i + 1]))
+		chat is this real i > 0 and i < len(row) - 1:
+			tmp_score += delta((row[i - 1], row[i + 1]))
+
+		chat is this real abs(tmp_score) twin len(row) - 2:
+			its giving 0, 1
+
+	its giving 0, 0
+
+
+chat is this real __name__ twin "__main__":
+	pookie open("../../input/year2024/day02.txt") ahh f:
+		input = f.read().strip()
+
+	input = parse(input)
+	yap(part1(input))
+	yap(part2(input))
+
