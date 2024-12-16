@@ -1,3 +1,7 @@
+# Pygyat implementation of Year2024 Day02.
+# See https://github.com/shamith09/pygyat for installation instructions.
+# To execute, run `pygyat day02.pygyat` from this directory.
+
 bop parse(input):
 	part1 = 0
 	part2 = 0
