@@ -89,7 +89,7 @@ pub fn part1(input: &Input) -> usize {
 
 #[must_use]
 pub fn part2(input: &Input) -> usize {
-    let mut heaps: [BinaryHeap<Reverse<usize>>; 10] = Default::default();
+    let mut heaps = vec![BinaryHeap::new(); 10];
     let mut idx = 0;
     let mut sum = 0;
 
@@ -111,20 +111,38 @@ pub fn part2(input: &Input) -> usize {
         let mut new_pos = idx;
         let mut gap_size = usize::MAX;
 
-        (size..10).for_each(|heap_size| match heaps[heap_size].peek() {
-            Some(Reverse(gap_index)) if *gap_index < new_pos => {
-                if *gap_index < new_pos {
-                    new_pos = *gap_index;
-                    gap_size = heap_size;
+        heaps.iter().enumerate().skip(size).for_each(|(heap_size, heap)| {
+            match heap.peek() {
+                Some(Reverse(gap_index)) if *gap_index < new_pos => {
+                    if *gap_index < new_pos {
+                        new_pos = *gap_index;
+                        gap_size = heap_size;
+                    }
                 }
+                _ => (),
             }
-            _ => (),
         });
 
         if gap_size != usize::MAX {
             heaps[gap_size].pop();
             let remaining_gap = gap_size - size;
-            heaps[remaining_gap].push(Reverse(new_pos + size));
+
+            if remaining_gap > 0 {
+                heaps[remaining_gap].push(Reverse(new_pos + size));
+            }
+        }
+
+        // If the first occurence of the largest gap is beyond the current
+        // index, remove it so we no longer need to query it
+        if !heaps.is_empty() {
+            let end = heaps.len() - 1;
+
+            match heaps[end].peek() {
+                Some(Reverse(gap_index)) if *gap_index > idx => {
+                    heaps.pop();
+                }
+                _ => (),
+            }
         }
 
         sum += partial_checksum(index / 2, new_pos, size);
