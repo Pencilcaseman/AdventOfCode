@@ -2,6 +2,7 @@
 
 use std::collections::VecDeque;
 
+#[must_use]
 pub fn parse(input: &str) -> (usize, usize) {
     let table: Vec<Vec<u8>> =
         input.lines().map(|line| line.as_bytes().to_vec()).collect::<Vec<_>>();
@@ -29,14 +30,17 @@ pub fn parse(input: &str) -> (usize, usize) {
     (part1, part2)
 }
 
-pub fn part1(input: &(usize, usize)) -> usize {
+#[must_use]
+pub const fn part1(input: &(usize, usize)) -> usize {
     input.0
 }
 
-pub fn part2(input: &(usize, usize)) -> usize {
+#[must_use]
+pub const fn part2(input: &(usize, usize)) -> usize {
     input.1
 }
 
+#[must_use]
 pub fn walker(
     grid: &[Vec<u8>],
     start_points: &[(usize, usize)],
