@@ -2,8 +2,8 @@
 
 use std::collections::HashSet;
 
-use fxhash::FxBuildHasher;
 use rayon::prelude::*;
+use rustc_hash::FxBuildHasher;
 
 type FastHashSet<T> = HashSet<T, FxBuildHasher>;
 type Input = (usize, usize);
