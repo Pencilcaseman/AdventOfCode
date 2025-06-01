@@ -40,7 +40,7 @@ fn main() {
             continue;
         };
 
-        // Trim whitespace
+        // Trim white space
         let data = data.trim_end().to_string();
 
         let start = std::time::Instant::now();

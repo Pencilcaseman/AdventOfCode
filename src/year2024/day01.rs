@@ -2,7 +2,11 @@
 
 use std::collections::HashMap;
 
+use rustc_hash::FxBuildHasher;
+
 use crate::util::parse;
+
+type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 
 #[must_use]
 pub fn parse(input: &str) -> (Vec<u32>, Vec<u32>) {
@@ -25,11 +29,9 @@ pub fn part1(input: &(Vec<u32>, Vec<u32>)) -> u32 {
 
 #[must_use]
 pub fn part2(input: &(Vec<u32>, Vec<u32>)) -> u32 {
-    type FastHashMap<K, V> = HashMap<K, V, fxhash::FxBuildHasher>;
-
     let mut map = FastHashMap::<u32, u32>::with_capacity_and_hasher(
         1024,
-        fxhash::FxBuildHasher::default(),
+        Default::default(),
     );
 
     input.0.iter().for_each(|n| *map.entry(*n).or_default() += 1);

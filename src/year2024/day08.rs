@@ -1,10 +1,10 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-use std::collections::HashMap as StdHashMap;
+use std::collections::HashMap;
 
-use fxhash::FxBuildHasher;
+use rustc_hash::FxBuildHasher;
 
-type FastHashMap<K, V> = StdHashMap<K, V, FxBuildHasher>;
+type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 
 type InputMap = FastHashMap<u8, Vec<(usize, usize)>>;
 type Input = (InputMap, (usize, usize));
