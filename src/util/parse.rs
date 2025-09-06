@@ -230,16 +230,19 @@ where
 }
 
 pub trait ParseOps {
-    fn iter_unsigned<T: util::integer::Unsigned>(&self) -> ParseUnsigned<T>;
-    fn iter_signed<T: util::integer::Signed>(&self) -> ParseSigned<T>;
+    fn iter_unsigned<T: util::integer::Unsigned>(&self)
+    -> ParseUnsigned<'_, T>;
+    fn iter_signed<T: util::integer::Signed>(&self) -> ParseSigned<'_, T>;
 }
 
 impl ParseOps for &str {
-    fn iter_unsigned<T: util::integer::Unsigned>(&self) -> ParseUnsigned<T> {
+    fn iter_unsigned<T: util::integer::Unsigned>(
+        &self,
+    ) -> ParseUnsigned<'_, T> {
         ParseUnsigned::new(self.bytes())
     }
 
-    fn iter_signed<T: util::integer::Signed>(&self) -> ParseSigned<T> {
+    fn iter_signed<T: util::integer::Signed>(&self) -> ParseSigned<'_, T> {
         ParseSigned::new(self.bytes())
     }
 }
