@@ -8,18 +8,55 @@ type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 
 type Input = Vec<usize>;
 
+const POW_10: [usize; 20] = [
+    1,
+    10,
+    100,
+    1_000,
+    10_000,
+    100_000,
+    1_000_000,
+    10_000_000,
+    100_000_000,
+    1_000_000_000,
+    10_000_000_000,
+    100_000_000_000,
+    1_000_000_000_000,
+    10_000_000_000_000,
+    100_000_000_000_000,
+    1_000_000_000_000_000,
+    10_000_000_000_000_000,
+    100_000_000_000_000_000,
+    1_000_000_000_000_000_000,
+    10_000_000_000_000_000_000,
+];
+
 /// # Panics
 #[must_use]
 pub fn parse(input: &str) -> Input {
     input.split_whitespace().map(|s| s.parse().unwrap()).collect()
 }
 
+fn num_length(num: usize) -> usize {
+    for (exp, pow) in POW_10.iter().enumerate() {
+        if num < *pow {
+            return exp;
+        }
+    }
+
+    0
+}
+
+const fn pow10(exp: usize) -> usize {
+    POW_10[exp]
+}
+
 fn split(num: usize) -> (usize, usize) {
-    let len = num.ilog10() + 1;
+    let len = num_length(num);
 
     debug_assert!(len.is_multiple_of(2));
 
-    let half = 10usize.pow(len / 2);
+    let half = pow10(len / 2);
     let head = num / half;
     let tail = num - (head * half);
 
@@ -38,7 +75,7 @@ fn blink_stone(
     } else {
         let res = if stone == 0 {
             blink_stone(lookup, 1, times - 1)
-        } else if !stone.ilog10().is_multiple_of(2) {
+        } else if num_length(stone).is_multiple_of(2) {
             let (head, tail) = split(stone);
             blink_stone(lookup, head, times - 1)
                 + blink_stone(lookup, tail, times - 1)
