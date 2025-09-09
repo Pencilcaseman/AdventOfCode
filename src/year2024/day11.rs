@@ -95,64 +95,71 @@ fn blink_v2(input: &Input, times: usize) -> usize {
     // Stores the number of stones with a particular ID
     let mut count = Vec::with_capacity(1 << 12);
 
-    // Stores the values of the stones
+    // Stores the values of all the stones we have seen
+    let mut numbers = Vec::with_capacity(1 << 12);
+
+    // Stores some stuff
     let mut stones = Vec::with_capacity(1 << 12);
 
-    // New stones to process
-    let mut new_stones: Vec<usize> = Vec::with_capacity(1 << 12);
+    // --------
 
-    let mut new_count: Vec<usize> = Vec::with_capacity(1 << 12);
+    // New stones to process
+    let mut todo_stones: Vec<usize> = Vec::with_capacity(1 << 12);
+
+    let mut tmp = Vec::new();
 
     for &stone in input {
         if let Some(&idx) = mapping.get(&stone) {
             count[idx] += 1;
         } else {
             count.push(1);
-            stones.push(stone);
-            new_stones.push(stone);
-            new_count.push(0);
+            numbers.push(stone);
+            tmp.push(stone);
             mapping.insert(stone, mapping.len());
         }
     }
 
     for _ in 0..times {
-        new_stones.clear();
-        new_count = vec![0; count.len()];
+        (todo_stones, tmp) = (tmp, todo_stones);
 
-        for stone in &mut stones {
-            // 0 => 1
-            // even digits => split
-            // else => * 2024
+        let mut stoner_fn = |stone| {
+            let idx = mapping.len();
+            *mapping.entry(stone).or_insert_with(|| {
+                tmp.push(stone);
+                idx
+            })
+        };
 
-            let (first, second) = if *stone == 0 {
-                (1, usize::MAX)
-            } else if num_length(*stone).is_multiple_of(2) {
-                split(*stone)
+        for stone in todo_stones.drain(..) {
+            let new_indices = if stone == 0 {
+                (stoner_fn(1), usize::MAX)
+            } else if num_length(stone).is_multiple_of(2) {
+                let (first, second) = split(stone);
+                (stoner_fn(first), stoner_fn(second))
             } else {
-                (*stone * 2024, usize::MAX)
+                (stoner_fn(stone * 2024), usize::MAX)
             };
 
-            if let Some(&idx) = mapping.get(&first) {
-                new_count[idx] += count[*mapping.get(stone).unwrap()];
-            } else {
-                new_count.push(count[*mapping.get(stone).unwrap()]);
-                new_stones.push(first);
-                mapping.insert(first, mapping.len());
-            }
+            stones.push(new_indices);
+        }
 
-            if second != usize::MAX {
-                if let Some(&idx) = mapping.get(&second) {
-                    new_count[idx] += count[*mapping.get(stone).unwrap()];
-                } else {
-                    new_count.push(count[*mapping.get(stone).unwrap()]);
-                    new_stones.push(second);
-                    mapping.insert(second, mapping.len());
-                }
+        let mut new_count = vec![0; mapping.len()];
+
+        for (&(idx_1, idx_2), num) in stones.iter().zip(&count) {
+            new_count[idx_1] += num;
+
+            if idx_2 != usize::MAX {
+                new_count[idx_2] += num;
             }
         }
 
-        count.clone_from(&new_count);
-        stones.extend(&new_stones);
+        // println!("Count: {count:?}");
+        // println!("Stones: {numbers:?}");
+        // println!("Mapping: {mapping:#?}");
+        // println!("New Count: {new_count:?}");
+        // println!("Todo Stones: {todo_stones:?}");
+
+        count = new_count;
     }
 
     count.into_iter().sum()
