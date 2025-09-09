@@ -8,6 +8,8 @@ type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 
 type Input = Vec<usize>;
 
+// For our use case, it is faster to store a static array than to use ilog10
+// and/or pow
 const POW_10: [usize; 20] = [
     1,
     10,
@@ -30,12 +32,6 @@ const POW_10: [usize; 20] = [
     1_000_000_000_000_000_000,
     10_000_000_000_000_000_000,
 ];
-
-/// # Panics
-#[must_use]
-pub fn parse(input: &str) -> Input {
-    input.split_whitespace().map(|s| s.parse().unwrap()).collect()
-}
 
 fn num_length(num: usize) -> usize {
     for (exp, pow) in POW_10.iter().enumerate() {
@@ -63,81 +59,56 @@ fn split(num: usize) -> (usize, usize) {
     (head, tail)
 }
 
-fn blink_stone(
-    lookup: &mut FastHashMap<(usize, usize), usize>,
-    stone: usize,
-    times: usize,
-) -> usize {
-    if times == 0 {
-        1
-    } else if let Some(res) = lookup.get(&(stone, times)) {
-        *res
-    } else {
-        let res = if stone == 0 {
-            blink_stone(lookup, 1, times - 1)
-        } else if num_length(stone).is_multiple_of(2) {
-            let (head, tail) = split(stone);
-            blink_stone(lookup, head, times - 1)
-                + blink_stone(lookup, tail, times - 1)
-        } else {
-            blink_stone(lookup, stone * 2024, times - 1)
-        };
-
-        lookup.insert((stone, times), res);
-        res
-    }
+/// # Panics
+#[must_use]
+pub fn parse(input: &str) -> Input {
+    input.split_whitespace().map(|s| s.parse().unwrap()).collect()
 }
 
-fn blink_v2(input: &Input, times: usize) -> usize {
+fn blink_n(input: &Input, times: usize) -> usize {
     // Maps from stone ID to table index
     let mut mapping = FastHashMap::<usize, usize>::default();
 
     // Stores the number of stones with a particular ID
     let mut count = Vec::with_capacity(1 << 12);
 
-    // Stores the values of all the stones we have seen
-    let mut numbers = Vec::with_capacity(1 << 12);
-
-    // Stores some stuff
+    // Buffer
     let mut stones = Vec::with_capacity(1 << 12);
 
-    // --------
-
-    // New stones to process
-    let mut todo_stones: Vec<usize> = Vec::with_capacity(1 << 12);
-
-    let mut tmp = Vec::new();
+    // New stones to process (double-buffered)
+    let mut todo_front = Vec::with_capacity(1 << 12);
+    let mut todo_back = Vec::with_capacity(1 << 12);
 
     for &stone in input {
         if let Some(&idx) = mapping.get(&stone) {
             count[idx] += 1;
         } else {
             count.push(1);
-            numbers.push(stone);
-            tmp.push(stone);
+            todo_back.push(stone);
             mapping.insert(stone, mapping.len());
         }
     }
 
     for _ in 0..times {
-        (todo_stones, tmp) = (tmp, todo_stones);
+        (todo_front, todo_back) = (todo_back, todo_front);
 
-        let mut stoner_fn = |stone| {
+        let mut map_index = |stone| {
             let idx = mapping.len();
             *mapping.entry(stone).or_insert_with(|| {
-                tmp.push(stone);
+                todo_back.push(stone);
                 idx
             })
         };
 
-        for stone in todo_stones.drain(..) {
+        #[allow(clippy::iter_with_drain)]
+        for stone in todo_front.drain(..) {
             let new_indices = if stone == 0 {
-                (stoner_fn(1), usize::MAX)
+                (map_index(1), usize::MAX)
             } else if num_length(stone).is_multiple_of(2) {
                 let (first, second) = split(stone);
-                (stoner_fn(first), stoner_fn(second))
+                (map_index(first), map_index(second))
             } else {
-                (stoner_fn(stone * 2024), usize::MAX)
+                (map_index(stone * 2024), usize::MAX)
             };
 
             stones.push(new_indices);
@@ -153,33 +124,20 @@ fn blink_v2(input: &Input, times: usize) -> usize {
             }
         }
 
-        // println!("Count: {count:?}");
-        // println!("Stones: {numbers:?}");
-        // println!("Mapping: {mapping:#?}");
-        // println!("New Count: {new_count:?}");
-        // println!("Todo Stones: {todo_stones:?}");
-
         count = new_count;
     }
 
     count.into_iter().sum()
 }
 
-fn solve(input: &Input, times: usize) -> usize {
-    let mut lookup = FastHashMap::default();
-    input.iter().map(|stone| blink_stone(&mut lookup, *stone, times)).sum()
-}
-
 #[must_use]
 pub fn part1(input: &Input) -> usize {
-    // solve(input, 25)
-    blink_v2(input, 25)
+    blink_n(input, 25)
 }
 
 #[must_use]
 pub fn part2(input: &Input) -> usize {
-    // solve(input, 75)
-    blink_v2(input, 75)
+    blink_n(input, 75)
 }
 
 // For my input, the correct answer is:
