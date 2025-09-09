@@ -66,18 +66,21 @@ pub fn parse(input: &str) -> Input {
 }
 
 fn blink_n(input: &Input, times: usize) -> usize {
+    const PREALLOC: usize = 4096;
+
     // Maps from stone ID to table index
     let mut mapping = FastHashMap::<usize, usize>::default();
 
     // Stores the number of stones with a particular ID
-    let mut count = Vec::with_capacity(1 << 12);
+    let mut count = Vec::with_capacity(PREALLOC);
+    let mut new_count = Vec::with_capacity(PREALLOC);
 
     // Buffer
-    let mut stones = Vec::with_capacity(1 << 12);
+    let mut stones = Vec::with_capacity(PREALLOC);
 
     // New stones to process (double-buffered)
-    let mut todo_front = Vec::with_capacity(1 << 12);
-    let mut todo_back = Vec::with_capacity(1 << 12);
+    let mut todo_front = Vec::with_capacity(PREALLOC);
+    let mut todo_back = Vec::with_capacity(PREALLOC);
 
     for &stone in input {
         if let Some(&idx) = mapping.get(&stone) {
@@ -114,7 +117,11 @@ fn blink_n(input: &Input, times: usize) -> usize {
             stones.push(new_indices);
         }
 
-        let mut new_count = vec![0; mapping.len()];
+        new_count.reserve_exact(mapping.len());
+        unsafe {
+            new_count.set_len(mapping.len());
+        }
+        new_count.fill(0);
 
         for (&(idx_1, idx_2), num) in stones.iter().zip(&count) {
             new_count[idx_1] += num;
@@ -124,7 +131,7 @@ fn blink_n(input: &Input, times: usize) -> usize {
             }
         }
 
-        count = new_count;
+        (count, new_count) = (new_count, count);
     }
 
     count.into_iter().sum()
