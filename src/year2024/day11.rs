@@ -88,6 +88,76 @@ fn blink_stone(
     }
 }
 
+fn blink_v2(input: &Input, times: usize) -> usize {
+    // Maps from stone ID to table index
+    let mut mapping = FastHashMap::<usize, usize>::default();
+
+    // Stores the number of stones with a particular ID
+    let mut count = Vec::with_capacity(1 << 12);
+
+    // Stores the values of the stones
+    let mut stones = Vec::with_capacity(1 << 12);
+
+    // New stones to process
+    let mut new_stones: Vec<usize> = Vec::with_capacity(1 << 12);
+
+    let mut new_count: Vec<usize> = Vec::with_capacity(1 << 12);
+
+    for &stone in input {
+        if let Some(&idx) = mapping.get(&stone) {
+            count[idx] += 1;
+        } else {
+            count.push(1);
+            stones.push(stone);
+            new_stones.push(stone);
+            new_count.push(0);
+            mapping.insert(stone, mapping.len());
+        }
+    }
+
+    for _ in 0..times {
+        new_stones.clear();
+        new_count = vec![0; count.len()];
+
+        for stone in &mut stones {
+            // 0 => 1
+            // even digits => split
+            // else => * 2024
+
+            let (first, second) = if *stone == 0 {
+                (1, usize::MAX)
+            } else if num_length(*stone).is_multiple_of(2) {
+                split(*stone)
+            } else {
+                (*stone * 2024, usize::MAX)
+            };
+
+            if let Some(&idx) = mapping.get(&first) {
+                new_count[idx] += count[*mapping.get(stone).unwrap()];
+            } else {
+                new_count.push(count[*mapping.get(stone).unwrap()]);
+                new_stones.push(first);
+                mapping.insert(first, mapping.len());
+            }
+
+            if second != usize::MAX {
+                if let Some(&idx) = mapping.get(&second) {
+                    new_count[idx] += count[*mapping.get(stone).unwrap()];
+                } else {
+                    new_count.push(count[*mapping.get(stone).unwrap()]);
+                    new_stones.push(second);
+                    mapping.insert(second, mapping.len());
+                }
+            }
+        }
+
+        count.clone_from(&new_count);
+        stones.extend(&new_stones);
+    }
+
+    count.into_iter().sum()
+}
+
 fn solve(input: &Input, times: usize) -> usize {
     let mut lookup = FastHashMap::default();
     input.iter().map(|stone| blink_stone(&mut lookup, *stone, times)).sum()
@@ -95,12 +165,14 @@ fn solve(input: &Input, times: usize) -> usize {
 
 #[must_use]
 pub fn part1(input: &Input) -> usize {
-    solve(input, 25)
+    // solve(input, 25)
+    blink_v2(input, 25)
 }
 
 #[must_use]
 pub fn part2(input: &Input) -> usize {
-    solve(input, 75)
+    // solve(input, 75)
+    blink_v2(input, 75)
 }
 
 // For my input, the correct answer is:
