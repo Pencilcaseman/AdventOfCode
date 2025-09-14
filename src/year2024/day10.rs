@@ -1,176 +1,39 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-#[derive(Clone)]
-pub struct Grid<T> {
-    rows: usize,
-    cols: usize,
-    data: Vec<T>,
-}
+use num_traits::WrappingAdd;
 
-impl<T> Grid<T> {
-    fn new(rows: usize, cols: usize) -> Self
-    where
-        T: Default + Copy,
-    {
-        Self { rows, cols, data: vec![T::default(); rows * cols] }
-    }
+use crate::util::point::{Direction, Point2D};
 
-    fn new_with(rows: usize, cols: usize, val: T) -> Self
-    where
-        T: Default + Copy,
-    {
-        Self { rows, cols, data: vec![val; rows * cols] }
-    }
-
-    fn row(&self, index: usize) -> &[T] {
-        debug_assert!(
-            index < self.rows,
-            "Index {index} out of range for Grid with {} rows",
-            self.rows
-        );
-
-        &self.data[(index * self.cols)..((index + 1) * self.cols)]
-    }
-}
-
-impl<T> std::ops::Index<usize> for Grid<T> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        debug_assert!(
-            index < self.rows * self.cols,
-            "Index {} out of range for Grid with {} elements",
-            index,
-            self.rows * self.cols
-        );
-        &self.data[index]
-    }
-}
-
-impl<T> std::ops::IndexMut<usize> for Grid<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        debug_assert!(
-            index < self.rows * self.cols,
-            "Index {} out of range for Grid with {} elements",
-            index,
-            self.rows * self.cols
-        );
-        &mut self.data[index]
-    }
-}
-
-impl<T> std::ops::Index<(usize, usize)> for Grid<T> {
-    type Output = T;
-
-    fn index(&self, index: (usize, usize)) -> &Self::Output {
-        debug_assert!(
-            index.0 < self.rows,
-            "Index {} out of range for Grid with {} rows",
-            index.0,
-            self.rows
-        );
-        debug_assert!(
-            index.1 < self.cols,
-            "Index {} out of range for Grid with {} cols",
-            index.1,
-            self.cols
-        );
-        &self.data[index.0 * self.cols + index.1]
-    }
-}
-
-impl<T> std::ops::IndexMut<(usize, usize)> for Grid<T> {
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
-        debug_assert!(
-            index.0 < self.rows,
-            "Index {} out of range for Grid with {} rows",
-            index.0,
-            self.rows
-        );
-        debug_assert!(
-            index.1 < self.cols,
-            "Index {} out of range for Grid with {} cols",
-            index.1,
-            self.cols
-        );
-        &mut self.data[index.0 * self.cols + index.1]
-    }
-}
-
-impl<T: std::fmt::Debug> std::fmt::Debug for Grid<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for r in 0..self.rows {
-            writeln!(f, "{:?}", self.row(r))?;
-        }
-
-        Ok(())
-    }
-}
-
-enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl std::ops::Add<Direction> for (usize, usize) {
-    type Output = (usize, usize);
-
-    fn add(self, rhs: Direction) -> Self::Output {
-        match rhs {
-            Direction::Up => (self.0.wrapping_sub(1), self.1),
-            Direction::Down => (self.0.wrapping_add(1), self.1),
-            Direction::Left => (self.0, self.1.wrapping_sub(1)),
-            Direction::Right => (self.0, self.1.wrapping_add(1)),
-        }
-    }
-}
-
-type Input = Grid<u8>;
+type Input = ndarray::Array2<u8>;
 
 #[must_use]
 pub fn parse(input: &str) -> Input {
     let cols = input.bytes().position(|b| b == b'\n').unwrap_or(1);
-    let rows = input.len() / cols;
+    let data = input.bytes().filter(|&b| b != b'\n').collect::<Vec<_>>();
+    let rows = data.len() / cols;
 
-    let mut grid = Grid::new(rows, cols);
-
-    let mut idx = 0;
-    for byte in input.bytes() {
-        if byte == b'\n' {
-            continue;
-        }
-
-        grid[idx] = byte;
-        idx += 1;
-    }
-
-    grid
+    unsafe { Input::from_shape_vec_unchecked((rows, cols), data) }
 }
 
 pub fn dfs(
     input: &Input,
-    seen: &mut Grid<u32>,
+    seen: &mut ndarray::Array2<u32>,
     id: u32,
-    pos: (usize, usize),
+    // pos: (usize, usize),
+    pos: Point2D<usize>,
     distinct: bool,
 ) -> u32 {
     let mut res = 0;
 
-    for new in
-        [Direction::Up, Direction::Down, Direction::Left, Direction::Right]
-            .into_iter()
-            .map(|d| pos + d)
-    {
-        if new.0 < input.rows
-            && new.1 < input.cols
-            && input[pos].wrapping_sub(input[new]) == 1
-            && (!distinct || seen[new] != id)
+    for new in Point2D::orthogonal().into_iter().map(|d| pos.wrapping_add(&d)) {
+        if new.row < input.dim().0
+            && new.col < input.dim().1
+            && input[pos.tuple()].wrapping_sub(input[new.tuple()]) == 1
+            && (!distinct || seen[new.tuple()] != id)
         {
-            seen[new] = id;
+            seen[new.tuple()] = id;
 
-            if input[new] == b'0' {
+            if input[new.tuple()] == b'0' {
                 res += 1;
             } else {
                 res += dfs(input, seen, id, new, distinct);
@@ -183,24 +46,21 @@ pub fn dfs(
 
 #[must_use]
 pub fn solve(input: &Input, distinct: bool) -> u32 {
-    let mut seen = Grid::<u32>::new_with(input.rows, input.cols, u32::MAX);
-    let mut res = 0;
+    let mut seen = ndarray::Array2::<u32>::from_elem(input.raw_dim(), u32::MAX);
 
-    for row in 0..input.rows {
-        for col in 0..input.cols {
-            if input[(row, col)] == b'9' {
-                res += dfs(
-                    input,
-                    &mut seen,
-                    u32::try_from(row * input.cols + col).unwrap_or(0),
-                    (row, col),
-                    distinct,
-                );
-            }
-        }
-    }
-
-    res
+    input
+        .indexed_iter()
+        .filter_map(|((row, col), val)| match *val {
+            b'9' => Some(dfs(
+                input,
+                &mut seen,
+                u32::try_from(row * input.dim().0 + col).unwrap_or(0),
+                Point2D::new(row, col),
+                distinct,
+            )),
+            _ => None,
+        })
+        .sum()
 }
 
 #[must_use]

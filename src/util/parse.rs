@@ -2,6 +2,36 @@
 
 use crate::util;
 
+pub fn grid_to_ndarray(grid: &str) -> ndarray::Array2<u8> {
+    let mut data = Vec::with_capacity(grid.len());
+    let mut rows = 1;
+    let mut cols = None;
+
+    let mut idx = 0;
+
+    for byte in grid.bytes() {
+        if byte == b'\n' {
+            if cols.is_none() {
+                cols = Some(idx);
+            }
+
+            rows += 1;
+
+            continue;
+        }
+
+        data.push(byte);
+        idx += 1;
+    }
+
+    unsafe {
+        ndarray::Array2::from_shape_vec_unchecked(
+            (rows, cols.unwrap_or(idx)),
+            data,
+        )
+    }
+}
+
 /// Given a string of the form "Lorem ipsum dolor1234", returns the number 1234
 pub fn parse_number<T: std::str::FromStr>(s: &str) -> Option<T> {
     s.chars()
