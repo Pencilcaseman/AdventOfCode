@@ -36,6 +36,10 @@ debug-assertions = false
 inherits = "release"
 debug = true
 
+[profile.profile.package."*"]
+inherits = "release"
+debug = true
+
 [[bench]]
 name = "benchmark"
 harness = false

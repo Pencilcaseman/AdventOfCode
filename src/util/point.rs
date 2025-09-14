@@ -8,10 +8,12 @@ pub struct Point2D<T> {
 }
 
 impl<T> Point2D<T> {
+    #[inline]
     pub fn new(row: T, col: T) -> Self {
         Self { row, col }
     }
 
+    #[inline]
     pub fn tuple(self) -> (T, T) {
         (self.row, self.col)
     }
@@ -48,6 +50,7 @@ pub enum Direction {
 }
 
 impl Direction {
+    #[inline]
     pub const fn clockwise(self) -> Self {
         match self {
             Self::Up => Self::Right,
@@ -57,6 +60,7 @@ impl Direction {
         }
     }
 
+    #[inline]
     pub const fn counter_clockwise(self) -> Self {
         match self {
             Self::Up => Self::Left,
@@ -66,7 +70,7 @@ impl Direction {
         }
     }
 
-    pub fn orthogonal() -> [Self; 4] {
+    pub const fn orthogonal() -> [Self; 4] {
         [Self::Up, Self::Down, Self::Left, Self::Right]
     }
 }
@@ -75,6 +79,7 @@ impl<T> From<Direction> for (T, T)
 where
     T: Signed + From<i8> + Copy,
 {
+    #[inline]
     fn from(dir: Direction) -> Self {
         let zero = T::from(0i8);
         let one = T::from(1i8);
@@ -93,6 +98,7 @@ impl<T> From<(T, T)> for Direction
 where
     T: Signed + From<i8> + Copy,
 {
+    #[inline]
     fn from(dir: (T, T)) -> Self {
         let zero = T::from(0i8);
         let one = T::from(1i8);
@@ -112,6 +118,7 @@ impl<T> From<Direction> for Point2D<T>
 where
     T: num_traits::int::PrimInt + WrappingAdd + WrappingSub,
 {
+    #[inline]
     fn from(dir: Direction) -> Self {
         Point2D::<T>::orthogonal()[dir as usize]
     }
@@ -131,6 +138,7 @@ where
 {
     type Output = Self;
 
+    #[inline]
     fn add(self, dir: Direction) -> Self::Output {
         let one = T::from(1u8);
 
@@ -149,6 +157,7 @@ where
 {
     type Output = Self;
 
+    #[inline]
     fn neg(self) -> Self::Output {
         Self { row: -self.row, col: -self.col }
     }
@@ -158,6 +167,7 @@ impl<T> WrappingNeg for Point2D<T>
 where
     T: WrappingNeg,
 {
+    #[inline]
     fn wrapping_neg(&self) -> Self {
         Self { row: self.row.wrapping_neg(), col: self.col.wrapping_neg() }
     }
@@ -170,6 +180,7 @@ where
     T: From<u8>,
     T: Copy,
 {
+    #[inline]
     fn add_assign(&mut self, dir: Direction) {
         *self = *self + dir;
     }
@@ -181,6 +192,7 @@ where
 {
     type Output = Self;
 
+    #[inline]
     fn add(self, v: Self) -> Self {
         Self::new(self.row + v.row, self.col + v.col)
     }
@@ -190,6 +202,7 @@ impl<T> WrappingAdd for Point2D<T>
 where
     T: Copy + WrappingAdd,
 {
+    #[inline]
     fn wrapping_add(&self, v: &Self) -> Self {
         Self::new(self.row.wrapping_add(&v.row), self.col.wrapping_add(&v.col))
     }
@@ -203,6 +216,7 @@ where
 {
     type Output = Self;
 
+    #[inline]
     fn sub(self, dir: Direction) -> Self::Output {
         let one = T::from(1u8);
 
@@ -222,6 +236,7 @@ where
     T: From<u8>,
     T: Copy,
 {
+    #[inline]
     fn sub_assign(&mut self, dir: Direction) {
         *self = *self - dir;
     }
