@@ -7,7 +7,7 @@ use crate::util::{
     point::{Direction, Point2D},
 };
 
-type Input = (u32, u32);
+type Input = (usize, usize);
 
 #[must_use]
 pub fn parse(input: &str) -> Input {
@@ -17,68 +17,70 @@ pub fn parse(input: &str) -> Input {
     let cols = grid.dim().1;
 
     let mut open = Vec::with_capacity(1024);
-    let mut edges = Vec::with_capacity(1024);
     let mut seen = ndarray::Array2::from_elem((rows, cols), false);
 
     let mut part1 = 0;
     let mut part2 = 0;
 
     for (plot, _) in grid.indexed_iter() {
-        if seen[plot] {
-            continue;
+        unsafe {
+            if *seen.uget(plot) {
+                continue;
+            }
         }
-
-        open.push(plot);
 
         let mut area = 0;
         let mut perimeter_1 = 0;
         let mut perimeter_2 = 0;
 
-        let current = grid[plot];
+        let current = unsafe { grid.uget(plot) };
 
-        let check = |point: Point2D<usize>| {
+        let check = |point: Point2D<usize>| unsafe {
             point.row < rows
                 && point.col < cols
-                && grid[point.tuple()] == current
+                && grid.uget(point.tuple()) == current
         };
 
-        while let Some(plot) = open.pop() {
-            if seen[plot] {
-                continue;
-            }
-            seen[plot] = true;
+        open.push(Point2D::from(plot));
+        unsafe {
+            *seen.uget_mut(plot) = true;
+        }
 
+        while let Some(plot) = open.pop() {
             area += 1;
 
             for dir in Direction::orthogonal() {
-                let new_point = Point2D::<usize>::from(plot)
-                    .wrapping_add(&Point2D::from(dir));
+                let new_plot = plot.wrapping_add(&Point2D::from(dir));
 
-                if check(new_point) {
-                    open.push(new_point.tuple());
-                } else {
-                    perimeter_1 += 1;
-                    edges.push((Point2D::from(plot), dir));
+                unsafe {
+                    if check(new_plot) {
+                        if !seen.uget(new_plot.tuple()) {
+                            *seen.uget_mut(new_plot.tuple()) = true;
+                            open.push(new_plot);
+                        }
+                    } else {
+                        perimeter_1 += 1;
+
+                        let left = dir.counter_clockwise();
+                        let right = dir.clockwise();
+
+                        perimeter_2 += usize::from(
+                            !check(plot.wrapping_add_dir(&left))
+                                || check(
+                                    plot.wrapping_add_dir(&dir)
+                                        .wrapping_add_dir(&left),
+                                ),
+                        );
+                        perimeter_2 += usize::from(
+                            !check(plot.wrapping_add_dir(&right))
+                                || check(
+                                    plot.wrapping_add_dir(&dir)
+                                        .wrapping_add_dir(&right),
+                                ),
+                        );
+                    }
                 }
             }
-        }
-
-        for (plot, dir) in edges.drain(..) {
-            let left = dir.counter_clockwise();
-            let right = dir.clockwise();
-
-            perimeter_2 += u32::from(
-                !check(plot.wrapping_add_dir(&left))
-                    || check(
-                        plot.wrapping_add_dir(&dir).wrapping_add_dir(&left),
-                    ),
-            );
-            perimeter_2 += u32::from(
-                !check(plot.wrapping_add_dir(&right))
-                    || check(
-                        plot.wrapping_add_dir(&dir).wrapping_add_dir(&right),
-                    ),
-            );
         }
 
         part1 += area * perimeter_1;
@@ -89,12 +91,12 @@ pub fn parse(input: &str) -> Input {
 }
 
 #[must_use]
-pub const fn part1(input: &Input) -> u32 {
+pub const fn part1(input: &Input) -> usize {
     input.0
 }
 
 #[must_use]
-pub const fn part2(input: &Input) -> u32 {
+pub const fn part2(input: &Input) -> usize {
     input.1
 }
 

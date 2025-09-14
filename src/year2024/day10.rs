@@ -2,7 +2,7 @@
 
 use num_traits::WrappingAdd;
 
-use crate::util::point::{Direction, Point2D};
+use crate::util::point::Point2D;
 
 type Input = ndarray::Array2<u8>;
 
@@ -19,7 +19,6 @@ pub fn dfs(
     input: &Input,
     seen: &mut ndarray::Array2<u32>,
     id: u32,
-    // pos: (usize, usize),
     pos: Point2D<usize>,
     distinct: bool,
 ) -> u32 {
