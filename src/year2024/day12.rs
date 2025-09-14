@@ -1,173 +1,103 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-use std::collections::{HashSet, VecDeque};
+use num_traits::WrappingAdd;
 
-use rustc_hash::FxBuildHasher;
+use crate::util::{
+    parse::grid_to_ndarray,
+    point::{Direction, Point2D},
+};
 
-type FastHashSet<V> = HashSet<V, FxBuildHasher>;
-
-type Input<'a> = Vec<&'a [u8]>;
+type Input = (u32, u32);
 
 #[must_use]
-pub fn parse(input: &str) -> Input<'_> {
-    input.as_bytes().split(|&b| b == b'\n').collect()
-}
+pub fn parse(input: &str) -> Input {
+    let grid = grid_to_ndarray(input);
 
-// PERF: Slow
-fn to_count_grid(input: &Input) -> Vec<Vec<u8>> {
-    let rows = input.len();
-    let cols = input[0].len();
-    let mut res = vec![vec![0; cols]; rows];
+    let rows = grid.dim().0;
+    let cols = grid.dim().1;
 
-    for row in 0..rows {
-        for col in 0..cols {
-            let current = input[row][col];
+    let mut open = Vec::with_capacity(1024);
+    let mut edges = Vec::with_capacity(1024);
+    let mut seen = ndarray::Array2::from_elem((rows, cols), false);
 
-            let up = if row == 0 {
-                1
-            } else {
-                u8::from(input[row - 1][col] != current)
-            };
+    let mut part1 = 0;
+    let mut part2 = 0;
 
-            let down = if row == rows - 1 {
-                1
-            } else {
-                u8::from(input[row + 1][col] != current)
-            };
-
-            let left = if col == 0 {
-                1
-            } else {
-                u8::from(input[row][col - 1] != current)
-            };
-
-            let right = if col == cols - 1 {
-                1
-            } else {
-                u8::from(input[row][col + 1] != current)
-            };
-
-            res[row][col] = up + down + left + right;
+    for (plot, _) in grid.indexed_iter() {
+        if seen[plot] {
+            continue;
         }
-    }
 
-    res
-}
+        open.push(plot);
 
-fn right_the_first_version_didnt_work(input: &Input) -> u32 {
-    let rows = input.len();
-    let cols = input[0].len();
+        let mut area = 0;
+        let mut perimeter_1 = 0;
+        let mut perimeter_2 = 0;
 
-    let mut alien = VecDeque::from(vec![(0, 0)]);
-    let mut open = VecDeque::new();
+        let current = grid[plot];
 
-    // let mut seen = FastHashSet::default();
-    let mut seen = vec![vec![false; cols]; rows];
+        let check = |point: Point2D<usize>| {
+            point.row < rows
+                && point.col < cols
+                && grid[point.tuple()] == current
+        };
 
-    let mut res = 0;
+        while let Some(plot) = open.pop() {
+            if seen[plot] {
+                continue;
+            }
+            seen[plot] = true;
 
-    while let Some(plot) = alien.pop_front() {
-        if !seen[plot.0][plot.1] {
-            open.push_back(plot);
+            area += 1;
 
-            let mut area = 0;
-            let mut perimeter = 0;
+            for dir in Direction::orthogonal() {
+                let new_point = Point2D::<usize>::from(plot)
+                    .wrapping_add(&Point2D::from(dir));
 
-            while let Some((row, col)) = open.pop_front() {
-                // if !seen.insert((row, col)) {
-                //     continue;
-                // }
-
-                if seen[row][col] {
-                    continue;
-                }
-
-                seen[row][col] = true;
-
-                let current = input[row][col];
-
-                area += 1;
-
-                // Up
-                if row == 0 {
-                    perimeter += 1;
-                } else if input[row - 1][col] == current {
-                    open.push_back((row - 1, col));
+                if check(new_point) {
+                    open.push(new_point.tuple());
                 } else {
-                    perimeter += 1;
-                    alien.push_back((row - 1, col));
-                }
-
-                // Down
-                if row == rows - 1 {
-                    perimeter += 1;
-                } else if input[row + 1][col] == current {
-                    open.push_back((row + 1, col));
-                } else {
-                    perimeter += 1;
-                    alien.push_back((row + 1, col));
-                }
-
-                // Left
-                if col == 0 {
-                    perimeter += 1;
-                } else if input[row][col - 1] == current {
-                    open.push_back((row, col - 1));
-                } else {
-                    perimeter += 1;
-                    alien.push_back((row, col - 1));
-                }
-
-                // Right
-                if col == cols - 1 {
-                    perimeter += 1;
-                } else if input[row][col + 1] == current {
-                    open.push_back((row, col + 1));
-                } else {
-                    perimeter += 1;
-                    alien.push_back((row, col + 1));
+                    perimeter_1 += 1;
+                    edges.push((Point2D::from(plot), dir));
                 }
             }
-
-            res += area * perimeter;
         }
+
+        for (plot, dir) in edges.drain(..) {
+            let left = dir.counter_clockwise();
+            let right = dir.clockwise();
+
+            perimeter_2 += u32::from(
+                !check(plot.wrapping_add_dir(&left))
+                    || check(
+                        plot.wrapping_add_dir(&dir).wrapping_add_dir(&left),
+                    ),
+            );
+            perimeter_2 += u32::from(
+                !check(plot.wrapping_add_dir(&right))
+                    || check(
+                        plot.wrapping_add_dir(&dir).wrapping_add_dir(&right),
+                    ),
+            );
+        }
+
+        part1 += area * perimeter_1;
+        part2 += area * (perimeter_2 / 2);
     }
 
-    res
+    (part1, part2)
 }
 
 #[must_use]
-pub fn part1(input: &Input) -> u32 {
-    right_the_first_version_didnt_work(input)
-
-    // let mut mapping = FastHashMap::default();
-    // let grid = to_count_grid(input);
-    //
-    // println!("Grid:\n{grid:?}");
-    //
-    // let rows = grid.len();
-    // let cols = grid[0].len();
-    //
-    // for row in 0..rows {
-    //     for col in 0..cols {
-    //         let current = input[row][col];
-    //         let val = mapping.entry(current).or_insert((0u32, 0u32));
-    //
-    //         val.0 += 1;
-    //         val.1 += u32::from(grid[row][col]);
-    //     }
-    // }
-    //
-    // println!("Mapping: {mapping:?}");
-    //
-    // mapping.into_values().map(|v| v.0 * v.1).sum()
+pub const fn part1(input: &Input) -> u32 {
+    input.0
 }
 
 #[must_use]
-pub fn part2(input: &Input) -> u32 {
-    1
+pub const fn part2(input: &Input) -> u32 {
+    input.1
 }
 
 // For my input, the correct answer is:
-// Part 1:
-// Part 2:
+// Part 1: 1371306
+// Part 2: 805880

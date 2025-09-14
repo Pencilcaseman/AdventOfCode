@@ -9,46 +9,11 @@ type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 type InputMap = FastHashMap<u8, Vec<(usize, usize)>>;
 type Input = (InputMap, (usize, usize));
 
-struct Grid<T> {
-    data: Vec<T>,
-    cols: usize,
-}
-
-impl<T: Default + Clone> Grid<T> {
-    fn new(rows: usize, cols: usize) -> Self {
-        Self { data: vec![T::default(); rows * cols], cols }
-    }
-}
-
-impl<T> std::ops::Index<(usize, usize)> for Grid<T> {
-    type Output = T;
-
-    fn index(&self, (row, col): (usize, usize)) -> &Self::Output {
-        &self.data[row * self.cols + col]
-    }
-}
-
-impl<T> std::ops::IndexMut<(usize, usize)> for Grid<T> {
-    fn index_mut(&mut self, (row, col): (usize, usize)) -> &mut Self::Output {
-        &mut self.data[row * self.cols + col]
-    }
-}
-
-impl<T> IntoIterator for Grid<T> {
-    type Item = T;
-    type IntoIter = std::vec::IntoIter<T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.data.into_iter()
-    }
-}
-
 #[must_use]
 pub fn parse(input: &str) -> Input {
     let mut rows = 0;
     let mut cols = 0;
-    let mut map =
-        InputMap::with_capacity_and_hasher(128, FxBuildHasher::default());
+    let mut map = InputMap::with_capacity_and_hasher(128, FxBuildHasher {});
 
     for (row, line) in input.lines().enumerate() {
         for (col, byte) in line.bytes().enumerate() {
@@ -69,7 +34,7 @@ pub fn parse(input: &str) -> Input {
 
 #[must_use]
 pub fn part1((map, (rows, cols)): &Input) -> usize {
-    let mut seen = Grid::new(*rows, *cols);
+    let mut seen = ndarray::Array2::zeros((*rows, *cols));
 
     for nodes in map.values() {
         for (first_row, first_col) in nodes {
@@ -91,12 +56,12 @@ pub fn part1((map, (rows, cols)): &Input) -> usize {
         }
     }
 
-    seen.into_iter().sum()
+    seen.sum()
 }
 
 #[must_use]
 pub fn part2((map, (rows, cols)): &Input) -> usize {
-    let mut seen = Grid::new(*rows, *cols);
+    let mut seen = ndarray::Array2::zeros((*rows, *cols));
 
     for nodes in map.values() {
         for (first_row, first_col) in nodes {
@@ -121,7 +86,7 @@ pub fn part2((map, (rows, cols)): &Input) -> usize {
         }
     }
 
-    seen.into_iter().sum()
+    seen.sum()
 }
 
 // For my input, the correct answer is:

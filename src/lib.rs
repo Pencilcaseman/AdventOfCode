@@ -11,6 +11,7 @@
 pub mod util {
     pub mod integer;
     pub mod parse;
+    pub mod point;
 }
 
 /// Solutions for year 2023

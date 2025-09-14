@@ -5,89 +5,11 @@ use std::collections::HashSet;
 use rayon::prelude::*;
 use rustc_hash::FxBuildHasher;
 
+use crate::util::point::{Direction, Point2D};
+
 type FastHashSet<T> = HashSet<T, FxBuildHasher>;
 type Input = (usize, usize);
-type SeenHashSet = FastHashSet<((isize, isize), Direction)>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl Direction {
-    const fn rotate(self) -> Self {
-        match self {
-            Self::Up => Self::Right,
-            Self::Right => Self::Down,
-            Self::Down => Self::Left,
-            Self::Left => Self::Up,
-        }
-    }
-}
-
-impl From<Direction> for (isize, isize) {
-    fn from(dir: Direction) -> Self {
-        match dir {
-            Direction::Up => (-1, 0),
-            Direction::Down => (1, 0),
-            Direction::Left => (0, -1),
-            Direction::Right => (0, 1),
-        }
-    }
-}
-
-impl From<(isize, isize)> for Direction {
-    fn from(dir: (isize, isize)) -> Self {
-        match dir {
-            (-1, 0) => Self::Up,
-            (1, 0) => Self::Down,
-            (0, -1) => Self::Left,
-            (0, 1) => Self::Right,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl std::ops::Add<Direction> for (isize, isize) {
-    type Output = (isize, isize);
-
-    fn add(self, dir: Direction) -> Self::Output {
-        match dir {
-            Direction::Up => (self.0 - 1, self.1),
-            Direction::Down => (self.0 + 1, self.1),
-            Direction::Left => (self.0, self.1 - 1),
-            Direction::Right => (self.0, self.1 + 1),
-        }
-    }
-}
-
-impl std::ops::AddAssign<Direction> for (isize, isize) {
-    fn add_assign(&mut self, dir: Direction) {
-        *self = *self + dir;
-    }
-}
-
-impl std::ops::Sub<Direction> for (isize, isize) {
-    type Output = (isize, isize);
-
-    fn sub(self, dir: Direction) -> Self::Output {
-        match dir {
-            Direction::Up => (self.0 + 1, self.1),
-            Direction::Down => (self.0 - 1, self.1),
-            Direction::Left => (self.0, self.1 + 1),
-            Direction::Right => (self.0, self.1 - 1),
-        }
-    }
-}
-
-impl std::ops::SubAssign<Direction> for (isize, isize) {
-    fn sub_assign(&mut self, dir: Direction) {
-        *self = *self - dir;
-    }
-}
+type SeenHashSet = FastHashSet<(Point2D<isize>, Direction)>;
 
 #[allow(
     clippy::cast_possible_truncation,
@@ -98,7 +20,7 @@ impl std::ops::SubAssign<Direction> for (isize, isize) {
 pub fn parse(input: &str) -> Input {
     let mut grid = Vec::with_capacity(128);
     let mut row = Vec::new();
-    let mut pos = (0, 0);
+    let mut pos = Point2D::new(0, 0);
 
     let mut row_idx = 0;
     let mut col_idx = 0;
@@ -113,7 +35,7 @@ pub fn parse(input: &str) -> Input {
                 col_idx = 0;
             }
             b'^' => {
-                pos = (row_idx, col_idx);
+                pos = Point2D::new(row_idx, col_idx);
                 row.push(b'^');
             }
             other => {
@@ -134,22 +56,22 @@ pub fn parse(input: &str) -> Input {
     let mut dir = Direction::Up;
     let mut tmp_pos = pos + dir;
 
-    while tmp_pos.0 >= 0
-        && tmp_pos.0 < rows as isize
-        && tmp_pos.1 >= 0
-        && tmp_pos.1 < cols as isize
+    while tmp_pos.row >= 0
+        && tmp_pos.row < rows as isize
+        && tmp_pos.col >= 0
+        && tmp_pos.col < cols as isize
     {
-        if grid[tmp_pos.0 as usize][tmp_pos.1 as usize] == b'#' {
-            dir = dir.rotate();
+        if grid[tmp_pos.row as usize][tmp_pos.col as usize] == b'#' {
+            dir = dir.clockwise();
             tmp_pos = pos + dir;
             continue;
         }
 
         let next = pos + dir;
 
-        if grid[next.0 as usize][next.1 as usize] == b'.' {
+        if grid[next.row as usize][next.col as usize] == b'.' {
             path.push((pos, dir));
-            grid[next.0 as usize][next.1 as usize] = b'^';
+            grid[next.row as usize][next.col as usize] = b'^';
         }
 
         pos = next;
@@ -197,17 +119,17 @@ pub const fn part2(input: &Input) -> usize {
 #[must_use]
 pub fn is_loop(
     skipper: &Skipper,
-    mut pos: (isize, isize),
+    mut pos: Point2D<isize>,
     (rows, cols): (usize, usize),
     mut dir: Direction,
     seen: &mut SeenHashSet,
 ) -> bool {
     let obstacle = pos + dir;
 
-    while pos.0 >= 0
-        && pos.0 < rows as isize
-        && pos.1 >= 0
-        && pos.1 < cols as isize
+    while pos.row >= 0
+        && pos.row < rows as isize
+        && pos.col >= 0
+        && pos.col < cols as isize
     {
         if !seen.insert((pos, dir)) {
             return true;
@@ -215,56 +137,56 @@ pub fn is_loop(
 
         match dir {
             Direction::Up => {
-                let target = skipper.up[pos.0 as usize][pos.1 as usize];
+                let target = skipper.up[pos.row as usize][pos.col as usize];
 
-                if pos.1 == obstacle.1
-                    && pos.0 > obstacle.0
-                    && obstacle.0 >= target
+                if pos.col == obstacle.col
+                    && pos.row > obstacle.row
+                    && obstacle.row >= target
                 {
-                    pos.0 = obstacle.0 + 1;
+                    pos.row = obstacle.row + 1;
                 } else {
-                    pos.0 = target;
+                    pos.row = target;
                 }
             }
             Direction::Down => {
-                let target = skipper.down[pos.0 as usize][pos.1 as usize];
+                let target = skipper.down[pos.row as usize][pos.col as usize];
 
-                if pos.1 == obstacle.1
-                    && pos.0 < obstacle.0
-                    && obstacle.0 <= target
+                if pos.col == obstacle.col
+                    && pos.row < obstacle.row
+                    && obstacle.row <= target
                 {
-                    pos.0 = obstacle.0 - 1;
+                    pos.row = obstacle.row - 1;
                 } else {
-                    pos.0 = target;
+                    pos.row = target;
                 }
             }
             Direction::Left => {
-                let target = skipper.left[pos.0 as usize][pos.1 as usize];
+                let target = skipper.left[pos.row as usize][pos.col as usize];
 
-                if pos.0 == obstacle.0
-                    && pos.1 > obstacle.1
-                    && obstacle.1 >= target
+                if pos.row == obstacle.row
+                    && pos.col > obstacle.col
+                    && obstacle.col >= target
                 {
-                    pos.1 = obstacle.1 + 1;
+                    pos.col = obstacle.col + 1;
                 } else {
-                    pos.1 = target;
+                    pos.col = target;
                 }
             }
             Direction::Right => {
-                let target = skipper.right[pos.0 as usize][pos.1 as usize];
+                let target = skipper.right[pos.row as usize][pos.col as usize];
 
-                if pos.0 == obstacle.0
-                    && pos.1 < obstacle.1
-                    && obstacle.1 <= target
+                if pos.row == obstacle.row
+                    && pos.col < obstacle.col
+                    && obstacle.col <= target
                 {
-                    pos.1 = obstacle.1 - 1;
+                    pos.col = obstacle.col - 1;
                 } else {
-                    pos.1 = target;
+                    pos.col = target;
                 }
             }
         }
 
-        dir = dir.rotate();
+        dir = dir.clockwise();
     }
 
     false
