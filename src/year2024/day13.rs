@@ -56,6 +56,7 @@ type Input = (i64, i64);
 
 const OFFSET: i64 = 10_000_000_000_000;
 
+#[inline]
 fn solve(ax: i64, ay: i64, bx: i64, by: i64, px: i64, py: i64) -> i64 {
     let inv_sf = ax * by - ay * bx;
 
