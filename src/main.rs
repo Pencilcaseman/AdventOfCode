@@ -54,9 +54,9 @@ fn main() {
             format!("{day:02}").red().bold()
         );
 
-        println!("Part 1 : {}", part1.purple());
-        println!("Part 2 : {}", part2.purple());
-        println!("Elapsed: {}", format!("{elapsed:?}").red());
+        println!("Part 1 : {}", part1.cyan());
+        println!("Part 2 : {}", part2.cyan());
+        println!("Elapsed: {}", format!("{elapsed:?}").cyan());
         println!();
     }
 

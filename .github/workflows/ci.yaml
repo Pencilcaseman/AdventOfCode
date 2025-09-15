@@ -25,16 +25,21 @@ jobs:
     - name: Install CodSpeed
       run: cargo install cargo-codspeed
 
+    - name: Clone Input Files
+      run: git clone https://github.com/Pencilcaseman/AdventOfCodeInputs.git input
+
     - run: cargo build
     - run: cargo build --release
 
     - run: cargo test
     - run: cargo test --release
 
-    - name: Build the benchmark target(s)
+    - run: cargo bench
+
+    - name: Build Benchmarks
       run: cargo codspeed build
 
-    - name: Run the benchmarks
+    - name: Run Benchmarks
       uses: CodSpeedHQ/action@v4
       with:
         mode: instrumentation
