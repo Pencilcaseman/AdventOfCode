@@ -4,8 +4,9 @@
 //! and implementation-wise. I've also tried to explain the solutions as best I
 //! can, so anyone struggling can get a better idea of what's going on.
 
-#![feature(iter_array_chunks)]
 #![feature(binary_heap_into_iter_sorted)]
+#![feature(iter_array_chunks)]
+#![feature(int_roundings)]
 
 /// Utility modules to handle common tasks
 pub mod util {
@@ -37,4 +38,5 @@ pub mod year2024 {
     pub mod day10;
     pub mod day11;
     pub mod day12;
+    pub mod day13;
 }

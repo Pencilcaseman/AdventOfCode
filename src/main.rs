@@ -1,5 +1,4 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-#![feature(iter_array_chunks)]
 
 use std::path::PathBuf;
 
@@ -9,7 +8,6 @@ use colored::Colorize;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// The solutions to run
     solutions: Vec<String>,
 }
 
@@ -40,7 +38,7 @@ fn main() {
             continue;
         };
 
-        // Trim white space
+        // Trim whitespace
         let data = data.trim_end().to_string();
 
         let start = std::time::Instant::now();
@@ -51,7 +49,7 @@ fn main() {
 
         println!(
             "{0} {1} Day {2} {0}",
-            "=====".green().bold(),
+            "========".green().bold(),
             year.to_string().red().bold(),
             format!("{day:02}").red().bold()
         );
@@ -110,5 +108,6 @@ fn year2024() -> Vec<Solution> {
         solution!(year2024, day10),
         solution!(year2024, day11),
         solution!(year2024, day12),
+        solution!(year2024, day13),
     ]
 }
