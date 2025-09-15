@@ -18,8 +18,9 @@ jobs:
 
     - uses: actions/checkout@v5
       with:
-        repository: "Pencilcaseman/AdventOfCodeInputs"
-        path: "input"
+        repository: Pencilcaseman/AdventOfCodeInputs
+        path: input
+        ref: master
 
     - name: Install Rust Nightly
       uses: dtolnay/rust-toolchain@stable
