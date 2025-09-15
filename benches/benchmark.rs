@@ -1,5 +1,3 @@
-extern crate criterion;
-
 use criterion::*;
 
 macro_rules! bench {
