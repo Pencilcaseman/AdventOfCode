@@ -1,5 +1,7 @@
 //! Helper functions to parse strings
 
+use std::borrow::Borrow;
+
 use crate::util;
 
 pub fn grid_to_ndarray(grid: &str) -> ndarray::Array2<u8> {
@@ -45,7 +47,8 @@ pub fn parse_number<T: std::str::FromStr>(s: &str) -> Option<T> {
 pub struct ParseUnsigned<'a, T, I = std::str::Bytes<'a>>
 where
     T: util::integer::Unsigned,
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     bytes: I,
     phantom: std::marker::PhantomData<&'a T>,
@@ -54,7 +57,8 @@ where
 pub struct ParseSigned<'a, T, I = std::str::Bytes<'a>>
 where
     T: util::integer::Signed,
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     bytes: I,
     phantom: std::marker::PhantomData<&'a T>,
@@ -63,7 +67,8 @@ where
 impl<T, I> ParseUnsigned<'_, T, I>
 where
     T: util::integer::Unsigned,
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     pub fn new(bytes: I) -> Self {
         Self { bytes, phantom: std::marker::PhantomData }
@@ -73,7 +78,8 @@ where
 impl<T, I> ParseSigned<'_, T, I>
 where
     T: util::integer::Signed,
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     pub fn new(bytes: I) -> Self {
         Self { bytes, phantom: std::marker::PhantomData }
@@ -83,7 +89,8 @@ where
 impl<T, I> Iterator for ParseUnsigned<'_, T, I>
 where
     T: util::integer::Unsigned,
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     type Item = T;
 
@@ -95,7 +102,8 @@ where
 impl<T, I> Iterator for ParseSigned<'_, T, I>
 where
     T: util::integer::Signed,
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     type Item = T;
 
@@ -108,10 +116,11 @@ pub fn try_unsigned_immediate<T: util::integer::Unsigned, I>(
     bytes: &mut I,
 ) -> Option<T>
 where
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     let byte = bytes.next()?;
-    let digit = byte.wrapping_sub(b'0');
+    let digit = byte.borrow().wrapping_sub(b'0');
 
     if digit >= 10 {
         return None;
@@ -121,7 +130,7 @@ where
 
     loop {
         let Some(byte) = bytes.next() else { break Some(n) };
-        let digit = byte.wrapping_sub(b'0');
+        let digit = byte.borrow().wrapping_sub(b'0');
 
         if digit < 10 {
             n = T::TEN * n + T::from(digit);
@@ -136,36 +145,38 @@ pub fn try_unsigned_immediate_with_final_byte<T, I>(
 ) -> (Option<T>, Option<u8>)
 where
     T: util::integer::Unsigned,
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     let Some(byte) = bytes.next() else { return (None, None) };
-    let digit = byte.wrapping_sub(b'0');
+    let digit = byte.borrow().wrapping_sub(b'0');
 
     if digit >= 10 {
-        return (None, Some(byte));
+        return (None, Some(*byte.borrow()));
     }
 
     let mut n: T = T::from(digit);
 
     loop {
         let Some(byte) = bytes.next() else { break (Some(n), None) };
-        let digit = byte.wrapping_sub(b'0');
+        let digit = byte.borrow().wrapping_sub(b'0');
 
         if digit < 10 {
             n = T::TEN * n + T::from(digit);
         } else {
-            break (Some(n), Some(byte));
+            break (Some(n), Some(*byte.borrow()));
         }
     }
 }
 
 pub fn try_unsigned<T: util::integer::Unsigned, I>(bytes: &mut I) -> Option<T>
 where
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     let mut n = loop {
         let byte = bytes.next()?;
-        let digit = byte.wrapping_sub(b'0');
+        let digit = byte.borrow().wrapping_sub(b'0');
         if digit < 10 {
             break T::from(digit);
         }
@@ -173,7 +184,7 @@ where
 
     loop {
         let Some(byte) = bytes.next() else { break Some(n) };
-        let digit = byte.wrapping_sub(b'0');
+        let digit = byte.borrow().wrapping_sub(b'0');
 
         if digit < 10 {
             n = T::TEN * n + T::from(digit);
@@ -187,16 +198,17 @@ pub fn try_signed_immediate<T: util::integer::Signed, I>(
     bytes: &mut I,
 ) -> Option<T>
 where
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
-    let mut byte = bytes.next()?;
+    let mut byte = *(bytes.next()?.borrow());
     let mut sign = false;
 
     if byte == b'-' {
         sign = true;
-        byte = bytes.next()?;
+        byte = *(bytes.next()?.borrow());
     } else if byte == b'+' {
-        byte = bytes.next()?;
+        byte = *(bytes.next()?.borrow());
     }
 
     let digit = byte.wrapping_sub(b'0');
@@ -209,7 +221,7 @@ where
 
     let res = loop {
         let Some(byte) = bytes.next() else { break n };
-        let digit = byte.wrapping_sub(b'0');
+        let digit = byte.borrow().wrapping_sub(b'0');
 
         if digit < 10 {
             n = T::TEN * n + T::from(digit);
@@ -223,11 +235,12 @@ where
 
 pub fn try_signed<T: util::integer::Signed, I>(bytes: &mut I) -> Option<T>
 where
-    I: Iterator<Item = u8>,
+    I: Iterator,
+    I::Item: Borrow<u8>,
 {
     // Take while not digits
     let (mut n, sign) = loop {
-        let byte = bytes.next()?;
+        let byte = *(bytes.next()?.borrow());
 
         if byte == b'-' {
             break (T::ZERO, true);
@@ -247,7 +260,7 @@ where
         let Some(byte) = bytes.next() else {
             break n;
         };
-        let digit = byte.wrapping_sub(b'0');
+        let digit = byte.borrow().wrapping_sub(b'0');
 
         if digit < 10 {
             n = T::TEN * n + T::from(digit);
