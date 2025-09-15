@@ -19,6 +19,7 @@ pub mod year2024 {
     mod day11_test;
     mod day12_test;
     mod day13_test;
+    mod day14_test;
 }
 
 pub mod util {
