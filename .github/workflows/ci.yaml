@@ -14,7 +14,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
+
+    - uses: actions/checkout@v5
+      with:
+        repository: "https://github.com/Pencilcaseman/AdventOfCodeInputs.git"
+        path: "input"
 
     - name: Install Rust Nightly
       uses: dtolnay/rust-toolchain@stable
@@ -24,9 +29,6 @@ jobs:
 
     - name: Install CodSpeed
       run: cargo install cargo-codspeed
-
-    - name: Clone Input Files
-      run: git clone https://github.com/Pencilcaseman/AdventOfCodeInputs.git input
 
     - run: cargo build
     - run: cargo build --release
