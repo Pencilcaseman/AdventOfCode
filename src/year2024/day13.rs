@@ -37,14 +37,20 @@
 //! It is worth noting that there are two possible cases if the determinant of
 //! the matrix is zero:
 //!
-//! 1. Both buttons move the claw in the same direction
-//! 2. Both buttons move the claw in the opposite direction
+//! 1. Both buttons move the claw in opposite directions
+//! 2. Both buttons move the claw in the same direction
 //!
-//! In the first case, there are possibly multiple solutions and we have to find
-//! the most efficient one.
+//! In the first case, there are an infinite number of solutions. Fortunately,
+//! all the inputs are positive and hence this case is not possible.
 //!
-//! In the second case, there are an infinite number of solutions. Fortunately,
-//! all the inputs are positive and hence this case is impossible to reach.
+//! In the second case, there are possibly multiple solutions and we have to
+//! find the most efficient one. We know that one button moves the claw some
+//! scalar multiple of the other. If this ratio is an integer, there is a fairly
+//! simple solution to the problem. If, however, the ratio is not an integer,
+//! the problem becomes a little bit more difficult to solve and would probably
+//! require the use of explicit fractions as opposed to floating point
+//! arithmetic. Fortunately, it seems like none of the inputs ever have a
+//! discriminant of zero, so we can ignore this case as well.
 
 #![warn(clippy::pedantic, clippy::nursery)]
 
@@ -56,28 +62,8 @@ type Input = (i64, i64);
 
 const OFFSET: i64 = 10_000_000_000_000;
 
-#[inline]
-fn solve(ax: i64, ay: i64, bx: i64, by: i64, px: i64, py: i64) -> i64 {
+const fn solve(ax: i64, ay: i64, bx: i64, by: i64, px: i64, py: i64) -> i64 {
     let inv_sf = ax * by - ay * bx;
-
-    if inv_sf == 0 {
-        let helper = |ax, ay, a, bx, b| {
-            if px % ax != 0 || py % ay != 0 || px / ax != py / ay {
-                0
-            } else {
-                let num_b = px / bx;
-                let num_a = (px - (bx * num_b)) / ax;
-                num_a * a + num_b * b
-            }
-        };
-
-        return if ax < bx {
-            helper(ax, ay, 3, bx, 1)
-        } else {
-            helper(bx, by, 1, ax, 3)
-        };
-    }
-
     let alpha = by * px - bx * py;
     let beta = ax * py - ay * px;
 
