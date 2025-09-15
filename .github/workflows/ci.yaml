@@ -16,16 +16,28 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
+    - name: Install Rust Nightly
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: nightly
-        override: true
         components: rustfmt, clippy
+
+    - name: Install CodSpeed
+      run: cargo install cargo-codspeed
 
     - run: cargo build
     - run: cargo build --release
 
     - run: cargo test
     - run: cargo test --release
+
+    - name: Build the benchmark target(s)
+      run: cargo codspeed build
+
+    - name: Run the benchmarks
+      uses: CodSpeedHQ/action@v4
+      with:
+        mode: instrumentation
+        run: cargo codspeed run
+        token: ${{ secrets.CODSPEED_TOKEN }}
 
