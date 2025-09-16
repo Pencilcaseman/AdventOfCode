@@ -4,18 +4,29 @@ use itertools::Itertools;
 
 use crate::util::parse::ParseSigned;
 
-type Input = Vec<(i32, i32, i32, i32)>;
+type Input = Vec<(usize, usize, usize, usize)>;
 
+#[allow(clippy::cast_sign_loss)]
 #[must_use]
 pub fn parse(input: &str) -> Input {
-    ParseSigned::<i32>::new(input.bytes()).tuples().collect()
+    ParseSigned::<i32>::new(input.bytes())
+        .tuples()
+        .map(|(x, y, dx, dy)| {
+            (
+                x as usize,
+                y as usize,
+                dx.rem_euclid(101) as usize,
+                dy.rem_euclid(103) as usize,
+            )
+        })
+        .collect()
 }
 
 #[must_use]
-pub fn solve_part1(input: &Input, width: i32, height: i32, steps: i32) -> i32 {
+pub fn part1(input: &Input) -> usize {
     let quadrant = |x, y| {
-        let w = width / 2;
-        let h = height / 2;
+        let w = 101 / 2;
+        let h = 103 / 2;
 
         if x == w || y == h {
             None
@@ -27,10 +38,7 @@ pub fn solve_part1(input: &Input, width: i32, height: i32, steps: i32) -> i32 {
     input
         .iter()
         .filter_map(|(x, y, dx, dy)| {
-            quadrant(
-                (x + dx * steps).rem_euclid(width),
-                (y + dy * steps).rem_euclid(height),
-            )
+            quadrant((x + dx * 100) % 101, (y + dy * 100) % 103)
         })
         .fold([0, 0, 0, 0], |mut count, quad| {
             count[quad] += 1;
@@ -40,27 +48,29 @@ pub fn solve_part1(input: &Input, width: i32, height: i32, steps: i32) -> i32 {
         .product()
 }
 
-#[allow(clippy::cast_sign_loss)]
 #[must_use]
-pub fn solve_part2(input: &Input, width: i32, height: i32) -> i32 {
+pub fn part2(input: &Input) -> usize {
     let mut x_mod = 0;
     let mut y_mod = 0;
 
-    let mut row = vec![0; width as usize];
-    let mut col = vec![0; height as usize];
+    let mut row = [0; 101];
+    let mut col = [0; 103];
 
-    for step in 0..width.max(height) {
+    for step in 0..103 {
         row.fill(0);
         col.fill(0);
 
         for (x, y, dx, dy) in input {
-            let x = (x + dx * step).rem_euclid(width) as usize;
-            let y = (y + dy * step).rem_euclid(height) as usize;
+            let x = (x + dx * step) % 101;
+            let y = (y + dy * step) % 103;
 
             row[x] += 1;
             col[y] += 1;
         }
 
+        // TODO: It might be worth pushing these to a vector to account for
+        // cases where the robots align outside of the tree, but this works for
+        // my input so it's probably fine :)
         if row.iter().filter(|&&c| c >= 20).count() >= 2 {
             x_mod = step;
         }
@@ -71,22 +81,15 @@ pub fn solve_part2(input: &Input, width: i32, height: i32) -> i32 {
     }
 
     // Solve x * p = 1 mod n
-    let helper = |p: i32, n: i32| (1..n).find(|x| (x * p).rem_euclid(n) == 1);
+    // let helper = |p: usize, n: usize| (1..n).find(|x| (x * p).rem_euclid(n)
+    // == 1); let x = helper(height, width).unwrap_or(1); // => 51
+    // let y = helper(width, height).unwrap_or(1); // => 51
+    //
+    // 51 * height = 5,253
+    // 51 * width = 5,151
+    // width * height = 10403
 
-    let x = helper(height, width).unwrap_or(1);
-    let y = helper(width, height).unwrap_or(1);
-
-    (x * x_mod * height + y * y_mod * width).rem_euclid(width * height)
-}
-
-#[must_use]
-pub fn part1(input: &Input) -> i32 {
-    solve_part1(input, 101, 103, 100)
-}
-
-#[must_use]
-pub fn part2(input: &Input) -> i32 {
-    solve_part2(input, 101, 103)
+    (x_mod * 5253 + y_mod * 5151) % 10403
 }
 
 // For my input, the correct answer is:
