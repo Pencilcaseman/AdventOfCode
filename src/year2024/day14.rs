@@ -40,40 +40,43 @@ pub fn solve_part1(input: &Input, width: i32, height: i32, steps: i32) -> i32 {
         .product()
 }
 
+#[allow(clippy::cast_sign_loss)]
 #[must_use]
 pub fn solve_part2(input: &Input, width: i32, height: i32) -> i32 {
-    let mut grid =
-        ndarray::Array2::from_elem((height as usize, width as usize), false);
+    let mut x_mod = 0;
+    let mut y_mod = 0;
 
-    let mut steps = 0;
+    let mut row = vec![0; width as usize];
+    let mut col = vec![0; height as usize];
 
-    loop {
-        steps += 1;
-        let mut valid = true;
-        grid.fill(false);
+    for step in 0..width.max(height) {
+        row.fill(0);
+        col.fill(0);
 
-        for (col, row) in input.iter().map(|(x, y, dx, dy)| {
-            (
-                (x + dx * steps).rem_euclid(width),
-                (y + dy * steps).rem_euclid(height),
-            )
-        }) {
-            unsafe {
-                if *grid.uget((row as usize, col as usize)) {
-                    valid = false;
-                    break;
-                }
+        for (x, y, dx, dy) in input {
+            let x = (x + dx * step).rem_euclid(width) as usize;
+            let y = (y + dy * step).rem_euclid(height) as usize;
 
-                *grid.uget_mut((row as usize, col as usize)) = true;
-            }
+            row[x] += 1;
+            col[y] += 1;
         }
 
-        if !valid {
-            continue;
+        if row.iter().filter(|&&c| c >= 20).count() >= 2 {
+            x_mod = step;
         }
 
-        break steps;
+        if col.iter().filter(|&&c| c >= 20).count() >= 2 {
+            y_mod = step;
+        }
     }
+
+    // Solve x * p = 1 mod n
+    let helper = |p: i32, n: i32| (1..n).find(|x| (x * p).rem_euclid(n) == 1);
+
+    let x = helper(height, width).unwrap_or(1);
+    let y = helper(width, height).unwrap_or(1);
+
+    (x * x_mod * height + y * y_mod * width).rem_euclid(width * height)
 }
 
 #[must_use]
