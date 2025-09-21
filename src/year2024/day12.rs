@@ -11,7 +11,7 @@ type Input = (usize, usize);
 
 #[must_use]
 pub fn parse(input: &str) -> Input {
-    let grid = grid_to_ndarray(input);
+    let grid = grid_to_ndarray(input.bytes());
 
     let rows = grid.dim().0;
     let cols = grid.dim().1;
