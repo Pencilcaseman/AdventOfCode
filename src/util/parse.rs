@@ -4,26 +4,38 @@ use std::borrow::Borrow;
 
 use crate::util;
 
-pub fn grid_to_ndarray(grid: &str) -> ndarray::Array2<u8> {
-    let mut data = Vec::with_capacity(grid.len());
+pub fn grid_to_ndarray<'a, I>(grid: I) -> ndarray::Array2<u8>
+where
+    I: Iterator,
+    I::Item: Borrow<u8>,
+{
+    let mut data = Vec::new();
     let mut rows = 1;
     let mut cols = None;
 
+    let mut current_col = 0;
     let mut idx = 0;
 
-    for byte in grid.bytes() {
-        if byte == b'\n' {
+    for byte in grid {
+        if *byte.borrow() == b'\n' {
+            if current_col == 0 {
+                rows -= 1;
+                break;
+            }
+
             if cols.is_none() {
                 cols = Some(idx);
             }
 
             rows += 1;
+            current_col = 0;
 
             continue;
         }
 
-        data.push(byte);
+        data.push(*byte.borrow());
         idx += 1;
+        current_col += 1;
     }
 
     unsafe {

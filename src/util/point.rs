@@ -241,3 +241,47 @@ where
         *self = *self - dir;
     }
 }
+
+impl<T> std::ops::Mul<T> for Point2D<T>
+where
+    T: std::ops::Mul<Output = T> + Copy,
+{
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, scale: T) -> Self::Output {
+        Self { row: self.row * scale, col: self.col * scale }
+    }
+}
+
+impl<T> std::ops::MulAssign<T> for Point2D<T>
+where
+    T: std::ops::Mul<Output = T> + Copy,
+{
+    #[inline]
+    fn mul_assign(&mut self, scale: T) {
+        *self = *self * scale;
+    }
+}
+
+impl<T> std::ops::Mul<(T, T)> for Point2D<T>
+where
+    T: std::ops::Mul<Output = T>,
+{
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, scale: (T, T)) -> Self::Output {
+        Self { row: self.row * scale.0, col: self.col * scale.1 }
+    }
+}
+
+impl<T> std::ops::MulAssign<(T, T)> for Point2D<T>
+where
+    T: std::ops::Mul<Output = T> + Copy,
+{
+    #[inline]
+    fn mul_assign(&mut self, scale: (T, T)) {
+        *self = *self * scale;
+    }
+}
