@@ -11,43 +11,34 @@ const WALL: u8 = b'#';
 const ROBOT: u8 = b'@';
 
 type Grid = ndarray::Array2<u8>;
-type Input = (Grid, Vec<(Direction, u8)>, Point2D<usize>);
+type Input<'a> = (Grid, &'a [u8], Point2D<usize>);
+
+fn print_grid(grid: &Grid, robot: (usize, usize)) {
+    for i in 0..grid.dim().0 {
+        for j in 0..grid.dim().1 {
+            if (i, j) == robot {
+                print!("@");
+            } else {
+                print!("{}", grid[(i, j)] as char);
+            }
+        }
+        println!();
+    }
+}
 
 /// # Panics
 #[must_use]
-pub fn parse(input: &str) -> Input {
-    let mut bytes = input.bytes();
+pub fn parse(input: &str) -> Input<'_> {
+    let bytes = input.as_bytes();
 
-    let mut grid = grid_to_ndarray(&mut bytes);
-    let (mut dirs, last) = bytes.fold(
-        (Vec::with_capacity(1 << 16), (None, 0u8)),
-        |(mut vec, prev), byte| {
-            let dir = match byte {
-                b'\n' => return (vec, prev),
-                b'<' => Direction::Left,
-                b'>' => Direction::Right,
-                b'^' => Direction::Up,
-                b'v' => Direction::Down,
-                _ => unreachable!(),
-            };
-
-            if prev.0.is_none_or(|p| p == dir) {
-                (vec, (Some(dir), prev.1 + 1))
-            } else {
-                vec.push((prev.0.unwrap(), prev.1));
-                (vec, (Some(dir), 1))
-            }
-        },
-    );
-
-    dirs.push((last.0.unwrap(), last.1));
+    let mut grid = grid_to_ndarray(bytes.iter());
+    let dirs = &bytes[grid.dim().0 * (grid.dim().1 + 1)..];
 
     let origin = grid
         .indexed_iter()
         .find_map(|(idx, v)| if *v == ROBOT { Some(idx) } else { None })
         .unwrap();
 
-    // Keep track of the robot explicitly
     grid[origin] = EMPTY;
 
     (grid, dirs, Point2D::new(origin.0, origin.1))
@@ -58,44 +49,38 @@ pub fn part1((grid, dirs, origin): &Input) -> usize {
     let mut grid = grid.clone();
     let mut pos = *origin;
 
-    for &dir in dirs {
-        let mut tmp_pos = pos;
-        let mut empty = 0;
+    let mut push = |pos: Point2D<usize>, dir: Direction| {
+        let mut tmp_pos = pos + dir;
+
         let mut boxes = 0;
 
-        loop {
-            tmp_pos += dir.0;
-
-            match grid[tmp_pos.tuple()] {
-                WALL => {
-                    break;
-                }
-                BOX => {
-                    boxes += 1;
-                }
-                EMPTY => {
-                    empty += 1;
-                }
-                _ => unreachable!(),
-            }
-
-            if empty == dir.1 {
-                break;
-            }
+        while grid[tmp_pos.tuple()] != EMPTY && grid[tmp_pos.tuple()] != WALL {
+            tmp_pos += dir;
+            boxes += 1;
         }
 
-        tmp_pos = pos;
+        if grid[tmp_pos.tuple()] == EMPTY {
+            let mut prev = EMPTY;
+            tmp_pos = pos + dir;
 
-        for _ in 0..usize::from(empty) {
-            tmp_pos += dir.0;
-            grid[tmp_pos.tuple()] = EMPTY;
+            for _ in 0..=boxes {
+                std::mem::swap(&mut prev, &mut grid[tmp_pos.tuple()]);
+                tmp_pos += dir;
+            }
+
+            pos + dir
+        } else {
+            pos
         }
+    };
 
-        pos = tmp_pos;
-
-        for _ in 0..boxes {
-            tmp_pos += dir.0;
-            grid[tmp_pos.tuple()] = BOX;
+    for &byte in *dirs {
+        pos = match byte {
+            b'^' => push(pos, Direction::Up),
+            b'v' => push(pos, Direction::Down),
+            b'<' => push(pos, Direction::Left),
+            b'>' => push(pos, Direction::Right),
+            _ => pos,
         }
     }
 
