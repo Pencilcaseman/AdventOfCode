@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 
 use crate::util;
 
-pub fn grid_to_ndarray<'a, I>(grid: I) -> ndarray::Array2<u8>
+pub fn grid_to_ndarray<I>(grid: I) -> ndarray::Array2<u8>
 where
     I: Iterator,
     I::Item: Borrow<u8>,
