@@ -15,8 +15,11 @@ struct Args {
 fn main() {
     let target = Args::parse().solutions;
 
-    let solutions =
-        std::iter::empty().chain(year2023()).chain(year2024()).filter(|s| {
+    let solutions = std::iter::empty()
+        .chain(year2023())
+        .chain(year2024())
+        .chain(year2025())
+        .filter(|s| {
             target.is_empty()
                 || target.iter().any(|p| {
                     format!("year{}::day{:02}", s.year, s.day).contains(p)
@@ -112,4 +115,8 @@ fn year2024() -> Vec<Solution> {
         solution!(year2024, day14),
         solution!(year2024, day15),
     ]
+}
+
+fn year2025() -> Vec<Solution> {
+    vec![solution!(year2025, day01)]
 }

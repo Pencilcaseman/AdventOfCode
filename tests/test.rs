@@ -23,6 +23,10 @@ pub mod year2024 {
     mod day15_test;
 }
 
+pub mod year2025 {
+    mod day01_test;
+}
+
 pub mod util {
     mod parse_test;
 }
