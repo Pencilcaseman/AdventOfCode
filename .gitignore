@@ -21,3 +21,7 @@ input/
 
 # Flamegraph outputs
 flamegraph.svg
+
+# Python files
+__pycache__/
+**/*.pyc
