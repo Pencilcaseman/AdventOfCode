@@ -127,6 +127,7 @@ def single_sum_many(n):
     # we are double counting
     # r is segment repeats
     for r in range(2, math.ceil(math.log10(n + 1)) + 1):
+        # for r in range(2, math.ceil(math.log10(n + 1))):
         sum += double_count_removal[r] * single_sum_r(n, r)
         # sum += single_sum_r(n, r)
 
