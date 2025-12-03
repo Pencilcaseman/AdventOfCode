@@ -1,15 +1,15 @@
 type Input = Vec<(i32, i32)>;
 
 pub fn parse(input: &str) -> Input {
-    (0, 0)
+    vec![(0, 0)]
 }
 
 pub fn part1(input: &Input) -> i32 {
-    input.0
+    todo!()
 }
 
 pub fn part2(input: &Input) -> i32 {
-    input.1
+    todo!()
 }
 
 // Answers for my input

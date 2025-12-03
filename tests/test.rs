@@ -25,6 +25,7 @@ pub mod year2024 {
 
 pub mod year2025 {
     mod day01_test;
+    mod day02_test;
 }
 
 pub mod util {
