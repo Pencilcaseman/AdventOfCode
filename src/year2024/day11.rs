@@ -4,55 +4,18 @@ use std::collections::HashMap;
 
 use rustc_hash::FxBuildHasher;
 
+use crate::util::integer::{num_length, pow10};
+
 type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 
 type Input = Vec<usize>;
 
-// For our use case, it is faster to store a static array than to use ilog10
-// and/or pow
-const POW_10: [usize; 20] = [
-    1,
-    10,
-    100,
-    1_000,
-    10_000,
-    100_000,
-    1_000_000,
-    10_000_000,
-    100_000_000,
-    1_000_000_000,
-    10_000_000_000,
-    100_000_000_000,
-    1_000_000_000_000,
-    10_000_000_000_000,
-    100_000_000_000_000,
-    1_000_000_000_000_000,
-    10_000_000_000_000_000,
-    100_000_000_000_000_000,
-    1_000_000_000_000_000_000,
-    10_000_000_000_000_000_000,
-];
-
-fn num_length(num: usize) -> usize {
-    for (exp, pow) in POW_10.iter().enumerate() {
-        if num < *pow {
-            return exp;
-        }
-    }
-
-    0
-}
-
-const fn pow10(exp: usize) -> usize {
-    POW_10[exp]
-}
-
 fn split(num: usize) -> (usize, usize) {
-    let len = num_length(num);
+    let len = num_length(num as u64);
 
     debug_assert!(len.is_multiple_of(2));
 
-    let half = pow10(len / 2);
+    let half = usize::try_from(pow10(len / 2)).unwrap();
     let head = num / half;
     let tail = num - (head * half);
 
@@ -107,7 +70,7 @@ fn blink_n(input: &Input, times: usize) -> usize {
         for stone in todo_front.drain(..) {
             let new_indices = if stone == 0 {
                 (map_index(1), usize::MAX)
-            } else if num_length(stone).is_multiple_of(2) {
+            } else if num_length(stone as u64).is_multiple_of(2) {
                 let (first, second) = split(stone);
                 (map_index(first), map_index(second))
             } else {

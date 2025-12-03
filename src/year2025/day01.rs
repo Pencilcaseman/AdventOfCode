@@ -11,7 +11,7 @@ pub fn parse(input: &str) -> Input {
     let mut dir = b'0';
     let mut num = 0;
 
-    for byte in input.bytes() {
+    for byte in input.bytes().chain(std::iter::once(b'\n')) {
         match byte {
             b'L' => dir = b'L',
             b'R' => dir = b'R',
