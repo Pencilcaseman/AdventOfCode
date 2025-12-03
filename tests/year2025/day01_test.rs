@@ -1,5 +1,4 @@
 use aoc::year2025::day01::*;
-use num_traits::Euclid;
 
 const EXAMPLE_INPUT: &str = "\
 L68
@@ -12,12 +11,6 @@ L1
 L99
 R14
 L82";
-
-// const MY_EXAMPLE: &str = "\
-// R50
-// R50
-// R100
-// R150";
 
 const MY_EXAMPLE: &str = "\
 L50
@@ -34,8 +27,6 @@ fn test_sample_part1() {
 
 #[test]
 fn test_sample_part2() {
-    println!("{:?}", (-450).div_rem_euclid(&100));
-
     let input = parse(EXAMPLE_INPUT);
     assert_eq!(part2(&input), 6);
 }
