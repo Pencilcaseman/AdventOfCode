@@ -3,40 +3,48 @@ use crate::util::{
     parse::ParseUnsigned,
 };
 
-type Input = Vec<(u64, u64)>;
+type Input = (u64, u64);
 
 const DOUBLE_COUNT_REMOVAL: [i8; 16] =
     [0, 0, 1, 1, 0, 1, -1, 1, 0, 0, -1, 1, 0, 1, -1, -1];
 
 pub fn parse(input: &str) -> Input {
-    ParseUnsigned::new(input.bytes())
-        .array_chunks::<2>()
-        .map(|vals| (vals[0], vals[1]))
-        .collect()
+    let mut p1 = 0;
+    let mut p2 = 0;
+
+    for vals in ParseUnsigned::new(input.bytes()).array_chunks::<2>() {
+        let a = vals[0];
+        let b = vals[1];
+
+        let (a1, a2) = single_sum_2(a - 1);
+        let (b1, b2) = single_sum_2(b);
+
+        p1 += b1 - a1;
+        p2 += b2 - a2;
+    }
+
+    (p1, p2)
+}
+
+fn single_sum_2(n: u64) -> (u64, u64) {
+    let p1 = single_sum_r(n, 2);
+    let p2 = p1
+        + (3..(num_length(n) + 1))
+            .map(|r| {
+                (DOUBLE_COUNT_REMOVAL[r as usize] as i64)
+                    * (single_sum_r(n, r)) as i64
+            })
+            .sum::<i64>() as u64;
+
+    (p1, p2)
 }
 
 pub fn part1(input: &Input) -> u64 {
-    let mut sum = 0;
-
-    for &(a, b) in input.iter() {
-        let s1 = single_sum_r(a - 1, 2);
-        let s2 = single_sum_r(b, 2);
-        sum += s2 - s1;
-    }
-
-    sum
+    input.0
 }
 
 pub fn part2(input: &Input) -> u64 {
-    let mut sum = 0;
-
-    for &(a, b) in input.iter() {
-        let s1 = single_sum(a - 1);
-        let s2 = single_sum(b);
-        sum += s2 - s1;
-    }
-
-    sum
+    input.1
 }
 
 fn p(r: u8, q: u8) -> u64 {
@@ -65,15 +73,6 @@ fn single_sum_r(n: u64, r: u8) -> u64 {
     }
 
     sum
-}
-
-fn single_sum(n: u64) -> u64 {
-    (2..(num_length(n) + 1))
-        .map(|r| {
-            (DOUBLE_COUNT_REMOVAL[r as usize] as i64)
-                * (single_sum_r(n, r)) as i64
-        })
-        .sum::<i64>() as u64
 }
 
 // Answers for my input
