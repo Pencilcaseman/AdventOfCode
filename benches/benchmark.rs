@@ -137,6 +137,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     year2025::day01::bench(c);
     year2025::day02::bench(c);
+    year2025::day03::bench(c);
 }
 
 criterion_group!(benches, criterion_benchmark);
