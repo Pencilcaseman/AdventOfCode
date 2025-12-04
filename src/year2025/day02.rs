@@ -5,7 +5,7 @@ use crate::util::{
 
 type Input = (u64, u64);
 
-const DOUBLE_COUNT_REMOVAL: [i8; 16] =
+const DOUBLE_COUNT_REMOVAL: [i64; 16] =
     [0, 0, 1, 1, 0, 1, -1, 1, 0, 0, -1, 1, 0, 1, -1, -1];
 
 pub fn parse(input: &str) -> Input {
@@ -16,25 +16,12 @@ pub fn parse(input: &str) -> Input {
         let a = vals[0];
         let b = vals[1];
 
-        let (a1, a2) = single_sum_2(a - 1);
-        let (b1, b2) = single_sum_2(b);
+        let (a1, a2) = single_sum(a - 1);
+        let (b1, b2) = single_sum(b);
 
         p1 += b1 - a1;
         p2 += b2 - a2;
     }
-
-    (p1, p2)
-}
-
-fn single_sum_2(n: u64) -> (u64, u64) {
-    let p1 = single_sum_r(n, 2);
-    let p2 = p1
-        + (3..(num_length(n) + 1))
-            .map(|r| {
-                (DOUBLE_COUNT_REMOVAL[r as usize] as i64)
-                    * (single_sum_r(n, r)) as i64
-            })
-            .sum::<i64>() as u64;
 
     (p1, p2)
 }
@@ -73,6 +60,20 @@ fn single_sum_r(n: u64, r: u8) -> u64 {
     }
 
     sum
+}
+
+fn single_sum(n: u64) -> (u64, u64) {
+    let p1 = single_sum_r(n, 2);
+    let p2 = p1
+        + (3..(num_length(n) + 1))
+            .map(|r| {
+                let sign = DOUBLE_COUNT_REMOVAL[r as usize];
+                let val = single_sum_r(n, r) as i64;
+                sign * val
+            })
+            .sum::<i64>() as u64;
+
+    (p1, p2)
 }
 
 // Answers for my input
