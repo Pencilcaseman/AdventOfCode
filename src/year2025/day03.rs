@@ -13,45 +13,26 @@ pub fn part2(input: &Input) -> u64 {
 }
 
 pub fn solve<const N: usize>(input: &Input) -> u64 {
-    let mut sum = 0;
+    let mut num = [0u8; N];
 
-    for line in input {
-        // let line = line.as_bytes();
-        let mut num = [0u8; N];
-        let n = line.len();
+    input
+        .iter()
+        .map(|line| {
+            let end = line.len() - N;
+            num.copy_from_slice(&line.as_bytes()[end..]);
 
-        let end = n - N;
-
-        // let mut current = 0;
-        //
-        // for pos in 0..N {
-        //     for i in current..(n - (N - pos - 1)) {
-        //         if line[i] > num[pos] {
-        //             num[pos] = line[i];
-        //             current = i + 1;
-        //         }
-        //     }
-        // }
-
-        num.copy_from_slice(&line.as_bytes()[end..]);
-
-        for mut tmp in line[..end].bytes().rev() {
-            for j in 0..N {
-                if tmp >= num[j] {
-                    let old = num[j];
-                    num[j] = tmp;
-                    tmp = old;
-                } else {
-                    // Cannot create a better result
-                    break;
+            for mut tmp in line[..end].bytes().rev() {
+                for j in &mut num {
+                    if tmp < *j {
+                        break;
+                    }
+                    tmp = std::mem::replace(j, tmp);
                 }
             }
-        }
 
-        sum += num.into_iter().fold(0, |t, n| t * 10 + (n - b'0') as u64);
-    }
-
-    sum
+            num.into_iter().fold(0, |t, n| t * 10 + (n - b'0') as u64)
+        })
+        .sum()
 }
 
 // Answers for my input:
