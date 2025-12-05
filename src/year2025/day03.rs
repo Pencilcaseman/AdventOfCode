@@ -10,39 +10,7 @@ pub fn parse<'a>(input: &'a str) -> Input<'a> {
 }
 
 pub fn part1(input: &Input) -> u64 {
-    let mut sum = 0;
-
-    for line in input {
-        let mut first = line[0];
-        let mut second = line[1];
-
-        let mut i = 2;
-        let n = line.len();
-
-        while i < n {
-            let digit = line[i];
-
-            if digit >= second {
-                if second > first {
-                    first = second;
-                }
-
-                second = digit;
-            }
-
-            if second > first && i < n - 1 {
-                first = second;
-                second = line[i + 1];
-                i += 1;
-            }
-
-            i += 1;
-        }
-
-        sum += first * 10 + second;
-    }
-
-    sum
+    solve::<2>(input)
 }
 
 pub fn part2(input: &Input) -> u64 {
@@ -56,32 +24,19 @@ pub fn solve<const N: usize>(input: &Input) -> u64 {
         let mut num = [0u64; N];
         let n = line.len();
 
-        num.copy_from_slice(&line[0..N]);
+        let mut current = 0;
 
-        let mut idx = N;
+        for pos in 0..N {
+            let (idx, val) =
+                line[current..(n - (N - pos - 1))].iter().enumerate().fold(
+                    (0, 0),
+                    |(i, v), (ii, vv)| if *vv > v { (ii, *vv) } else { (i, v) },
+                );
 
-        while idx < n {
-            let mut current = 0;
-
-            while current + 1 < N && idx < n {
-                if num[current] < num[current + 1] {
-                    num[current..].rotate_left(1);
-                    num[N - 1] = line[idx];
-                    current = 0;
-                    idx += 1;
-                } else {
-                    current += 1;
-                }
-            }
-
-            if idx < n && num[N - 1] < line[idx] {
-                num[N - 1] = line[idx];
-            }
-
-            idx += 1;
+            num[pos] = val;
+            current += idx + 1;
         }
 
-        // sum += first * 10 + second;
         sum += num
             .into_iter()
             .enumerate()
