@@ -1,12 +1,9 @@
 use crate::util::integer::pow10;
 
-type Input<'a> = Vec<Vec<u64>>;
+type Input<'a> = Vec<&'a str>;
 
 pub fn parse<'a>(input: &'a str) -> Input<'a> {
-    input
-        .lines()
-        .map(|x| x.bytes().map(|b| (b - b'0') as u64).collect())
-        .collect()
+    input.lines().collect()
 }
 
 pub fn part1(input: &Input) -> u64 {
@@ -21,27 +18,28 @@ pub fn solve<const N: usize>(input: &Input) -> u64 {
     let mut sum = 0;
 
     for line in input {
-        let mut num = [0u64; N];
+        let line = line.as_bytes();
+        let mut num = [0u8; N];
         let n = line.len();
 
         let mut current = 0;
 
         for pos in 0..N {
-            let (idx, val) =
-                line[current..(n - (N - pos - 1))].iter().enumerate().fold(
-                    (0, 0),
-                    |(i, v), (ii, vv)| if *vv > v { (ii, *vv) } else { (i, v) },
-                );
-
-            num[pos] = val;
-            current += idx + 1;
+            for i in current..(n - (N - pos - 1)) {
+                if line[i] > num[pos] {
+                    num[pos] = line[i];
+                    current = i + 1;
+                }
+            }
         }
 
-        sum += num
-            .into_iter()
-            .enumerate()
-            .map(|(exp, num)| num * pow10((N - exp - 1) as u8))
-            .sum::<u64>();
+        // sum += num
+        //     .into_iter()
+        //     .enumerate()
+        //     .map(|(exp, num)| (num - b'0') as u64 * pow10((N - exp - 1) as
+        // u8))     .sum::<u64>();
+
+        sum += num.into_iter().fold(0, |t, n| t * 10 + (n - b'0') as u64);
     }
 
     sum
