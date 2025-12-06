@@ -1,44 +1,37 @@
 use ndarray::Array2;
-use num_traits::WrappingAdd;
 
-use crate::util::{parse::grid_to_ndarray, point::Point2D};
+use crate::util::parse::grid_to_ndarray;
 
-type Input = Array2<u8>;
+type Input = (usize, usize);
 
 pub fn parse(input: &str) -> Input {
-    grid_to_ndarray(input.bytes())
-}
+    let input = grid_to_ndarray(input.bytes());
 
-pub fn part1(input: &Input) -> usize {
+    let dim = input.dim();
+    let mut count_grid = Array2::<u8>::zeros(dim);
+
     let offsets = [
-        Point2D::new(-1, -1), // up left
-        Point2D::new(-1, 0),  // up
-        Point2D::new(-1, 1),  // up right
-        //
-        Point2D::new(0, -1), // left
-        Point2D::new(0, 1),  // right
-        //
-        Point2D::new(1, -1), // down left
-        Point2D::new(1, 0),  // down
-        Point2D::new(1, 1),  // down right
+        (usize::MAX, usize::MAX), // -1 -1
+        (usize::MAX, 0),          // -1 0
+        (usize::MAX, 1),          // -1 1
+        (0, usize::MAX),          // 0 -1
+        (0, 1),                   // 0 1
+        (1, usize::MAX),          // 1 -1
+        (1, 0),                   // 1 0
+        (1, 1),                   // 1 1
     ];
 
-    let mut grid = Array2::<u8>::zeros(input.dim());
-
-    let f = |(row, col): (i64, i64)| {
+    let f = |(row, col): (usize, usize)| {
         offsets
-            .iter()
+            .into_iter()
             .map(|offset| {
-                let pos = Point2D::new(row, col).wrapping_add(offset);
+                let pos =
+                    (row.wrapping_add(offset.0), col.wrapping_add(offset.1));
 
-                if pos.row < 0
-                    || pos.col < 0
-                    || pos.row >= input.dim().0 as i64
-                    || pos.col >= input.dim().1 as i64
-                {
+                if pos.0 >= input.dim().0 || pos.1 >= input.dim().1 {
                     0
                 } else {
-                    match input[(pos.row as usize, pos.col as usize)] {
+                    match input[pos] {
                         b'@' => 1,
                         _ => 0,
                     }
@@ -47,98 +40,45 @@ pub fn part1(input: &Input) -> usize {
             .sum::<u8>()
     };
 
-    grid.indexed_iter_mut().for_each(|((row, col), val)| {
-        if input[(row, col)] == b'@' {
-            *val = f((row as i64, col as i64))
+    count_grid.indexed_iter_mut().for_each(|(pos, val)| {
+        if input[pos] == b'@' {
+            *val = f(pos)
         } else {
             *val = u8::MAX;
         }
     });
 
-    grid.iter().filter(|&&v| v < 4).count()
-}
-
-pub fn part2(input: &Input) -> u64 {
-    let offsets = [
-        Point2D::new(-1, -1), // up left
-        Point2D::new(-1, 0),  // up
-        Point2D::new(-1, 1),  // up right
-        //
-        Point2D::new(0, -1), // left
-        Point2D::new(0, 1),  // right
-        //
-        Point2D::new(1, -1), // down left
-        Point2D::new(1, 0),  // down
-        Point2D::new(1, 1),  // down right
-    ];
-
-    let mut grid = Array2::<u8>::zeros(input.dim());
-
-    let f = |(row, col): (i64, i64)| {
-        offsets
-            .iter()
-            .map(|offset| {
-                let pos = Point2D::new(row, col).wrapping_add(offset);
-
-                if pos.row < 0
-                    || pos.col < 0
-                    || pos.row >= input.dim().0 as i64
-                    || pos.col >= input.dim().1 as i64
-                {
-                    0
-                } else {
-                    match input[(pos.row as usize, pos.col as usize)] {
-                        b'@' => 1,
-                        _ => 0,
-                    }
-                }
-            })
-            .sum::<u8>()
-    };
-
-    grid.indexed_iter_mut().for_each(|((row, col), val)| {
-        if input[(row, col)] == b'@' {
-            *val = f((row as i64, col as i64))
-        } else {
-            *val = u8::MAX;
-        }
-    });
-
-    // Grid now contains the initial counts
+    let part1 = input
+        .iter()
+        .zip(&count_grid)
+        .filter(|(b, c)| **b == b'@' && **c < 4)
+        .count();
 
     let mut total_removed = 0;
+
     loop {
         let mut step_removed = 0;
 
-        let rows = grid.dim().0;
-        let cols = grid.dim().1;
-
-        for pos in ndarray::indices(grid.dim()) {
-            if grid[pos] < 4 {
+        for pos in ndarray::indices(dim) {
+            if count_grid[pos] < 4 {
                 // Paper can be removed, so decrement surrounding paper
-                grid[pos] = u8::MAX;
+                count_grid[pos] = u8::MAX;
                 step_removed += 1;
 
                 offsets
                     .iter()
                     .filter_map(|o| {
-                        let new = o.wrapping_add(&Point2D::new(
-                            pos.0 as i64,
-                            pos.1 as i64,
-                        ));
+                        let new =
+                            (pos.0.wrapping_add(o.0), pos.1.wrapping_add(o.1));
 
-                        if new.row < 0
-                            || new.col < 0
-                            || new.row >= rows as i64
-                            || new.col >= cols as i64
-                        {
+                        if new.0 >= dim.0 || new.1 >= dim.1 {
                             None
                         } else {
                             Some(new)
                         }
                     })
                     .for_each(|p| {
-                        grid[(p.row as usize, p.col as usize)] -= 1;
+                        count_grid[p] -= 1;
                     })
             }
         }
@@ -150,7 +90,15 @@ pub fn part2(input: &Input) -> u64 {
         }
     }
 
-    total_removed
+    (part1, total_removed)
+}
+
+pub fn part1(input: &Input) -> usize {
+    input.0
+}
+
+pub fn part2(input: &Input) -> usize {
+    input.1
 }
 
 // Answers for my input:
