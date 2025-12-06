@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use rustc_hash::FxBuildHasher;
 
 use crate::util::parse;
@@ -11,8 +12,8 @@ type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
 #[must_use]
 pub fn parse(input: &str) -> (Vec<u32>, Vec<u32>) {
     parse::ParseUnsigned::<u32>::new(input.bytes())
-        .array_chunks::<2>()
-        .map(|c| (c[0], c[1]))
+        .tuples::<(u32, u32)>()
+        .map(|c| (c.0, c.1))
         .unzip()
 }
 
@@ -29,10 +30,8 @@ pub fn part1(input: &(Vec<u32>, Vec<u32>)) -> u32 {
 
 #[must_use]
 pub fn part2(input: &(Vec<u32>, Vec<u32>)) -> u32 {
-    let mut map = FastHashMap::<u32, u32>::with_capacity_and_hasher(
-        1024,
-        Default::default(),
-    );
+    let mut map =
+        FastHashMap::<u32, u32>::with_capacity_and_hasher(1024, FxBuildHasher);
 
     input.0.iter().for_each(|n| *map.entry(*n).or_default() += 1);
     input.1.iter().filter_map(|n| map.get(n).map(|c| c * n)).sum()

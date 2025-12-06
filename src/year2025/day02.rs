@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::util::{
     integer::{num_length, pow10},
     parse::ParseUnsigned,
@@ -12,12 +14,9 @@ pub fn parse(input: &str) -> Input {
     let mut p1 = 0;
     let mut p2 = 0;
 
-    for vals in ParseUnsigned::new(input.bytes()).array_chunks::<2>() {
-        let a = vals[0];
-        let b = vals[1];
-
-        let (a1, a2) = single_sum(a - 1);
-        let (b1, b2) = single_sum(b);
+    for vals in ParseUnsigned::new(input.bytes()).tuples::<(u64, u64)>() {
+        let (a1, a2) = single_sum(vals.0 - 1);
+        let (b1, b2) = single_sum(vals.1);
 
         p1 += b1 - a1;
         p2 += b2 - a2;

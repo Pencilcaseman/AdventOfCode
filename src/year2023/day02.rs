@@ -1,6 +1,5 @@
-#![warn(clippy::pedantic, clippy::nursery)]
-
 use atoi::atoi;
+use itertools::Itertools;
 
 pub struct Game(u32, u32, u32);
 
@@ -12,23 +11,23 @@ pub fn parse(input: &str) -> Vec<Game> {
     input
         .lines()
         .map(|line| {
-            line.split_ascii_whitespace().array_chunks::<2>().skip(1).fold(
+            line.split_ascii_whitespace().tuples::<(&str, &str)>().skip(1).fold(
                 Game(0, 0, 0),
-                |game, chunk| match chunk[1].as_bytes()[0] {
+                |game, chunk| match chunk.1.as_bytes()[0] {
                     b'r' => Game(
-                        game.0.max(atoi(chunk[0].as_bytes()).unwrap()),
+                        game.0.max(atoi(chunk.0.as_bytes()).unwrap()),
                         game.1,
                         game.2,
                     ),
                     b'g' => Game(
                         game.0,
-                        game.1.max(atoi(chunk[0].as_bytes()).unwrap()),
+                        game.1.max(atoi(chunk.0.as_bytes()).unwrap()),
                         game.2,
                     ),
                     b'b' => Game(
                         game.0,
                         game.1,
-                        game.2.max(atoi(chunk[0].as_bytes()).unwrap()),
+                        game.2.max(atoi(chunk.0.as_bytes()).unwrap()),
                     ),
                     _ => unreachable!(),
                 },
