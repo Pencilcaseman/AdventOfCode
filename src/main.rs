@@ -9,11 +9,20 @@ use colored::Colorize;
 #[command(author, version, about, long_about = None)]
 struct Args {
     solutions: Vec<String>,
+
+    /// More precise timing at the cost of runtime.
+    ///
+    /// Run each solution for 1 second and averages the times.
+    ///
+    /// *RUN BENCHMARKS FOR RELIABLE RESULTS*
+    #[arg(short, long, default_value_t = false)]
+    precise_timing: bool,
 }
 
 #[allow(clippy::cast_precision_loss)]
 fn main() {
-    let target = Args::parse().solutions;
+    let args = Args::parse();
+    let target = &args.solutions;
 
     let solutions = std::iter::empty()
         .chain(year2023())
@@ -44,9 +53,24 @@ fn main() {
         // Trim whitespace
         let data = data.trim_end().to_string();
 
-        let start = std::time::Instant::now();
-        let (part1, part2) = runner(&data);
-        let elapsed = start.elapsed();
+        let mut part1 = 0;
+        let mut part2 = 0;
+
+        let elapsed = if args.precise_timing {
+            let one_second = std::time::Duration::from_secs(1);
+            let mut samples = 0;
+
+            let start = std::time::Instant::now();
+            while start.elapsed() < one_second {
+                (part1, part2) = std::hint::black_box(runner(&data));
+                samples += 1;
+            }
+            start.elapsed() / samples
+        } else {
+            let start = std::time::Instant::now();
+            (part1, part2) = std::hint::black_box(runner(&data));
+            start.elapsed()
+        };
 
         total += elapsed.as_micros();
 
@@ -57,8 +81,8 @@ fn main() {
             format!("{day:02}").red().bold()
         );
 
-        println!("Part 1 : {}", part1.cyan());
-        println!("Part 2 : {}", part2.cyan());
+        println!("Part 1 : {}", part1.to_string().cyan());
+        println!("Part 2 : {}", part2.to_string().cyan());
         println!("Elapsed: {}", format!("{elapsed:?}").cyan());
         println!();
     }
@@ -69,7 +93,7 @@ fn main() {
 struct Solution {
     pub year: u32,
     pub day: u32,
-    pub runner: fn(&str) -> (String, String),
+    pub runner: fn(&str) -> (i128, i128),
 }
 
 macro_rules! solution {
@@ -81,7 +105,10 @@ macro_rules! solution {
                 use aoc::$year::$day::*;
 
                 let input = parse(data);
-                (part1(&input).to_string(), part2(&input).to_string())
+                (
+                    i128::try_from(part1(&input)).unwrap(),
+                    i128::try_from(part2(&input)).unwrap(),
+                )
             },
         }
     };
