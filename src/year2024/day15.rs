@@ -13,19 +13,6 @@ const ROBOT: u8 = b'@';
 type Grid = ndarray::Array2<u8>;
 type Input<'a> = (Grid, &'a [u8], Point2D<usize>);
 
-fn print_grid(grid: &Grid, robot: (usize, usize)) {
-    for i in 0..grid.dim().0 {
-        for j in 0..grid.dim().1 {
-            if (i, j) == robot {
-                print!("@");
-            } else {
-                print!("{}", grid[(i, j)] as char);
-            }
-        }
-        println!();
-    }
-}
-
 /// # Panics
 #[must_use]
 pub fn parse(input: &str) -> Input<'_> {

@@ -1,98 +1,55 @@
+use itertools::Itertools;
+
 use crate::util::parse::ParseUnsigned;
 
-type Input = (u64, u64);
+type Input = (Vec<(u64, u64)>, Vec<u64>);
 
 pub fn parse(input: &str) -> Input {
-    let mut lines = input.lines().map(|s| s.bytes());
+    let (ranges, nums) = input.split_once("\n\n").unwrap();
 
-    let mut ranges = lines.by_ref().map_while(|s| {
-        let mut bytes = ParseUnsigned::new(s);
+    let mut ranges: Vec<(u64, u64)> =
+        ParseUnsigned::new(ranges.bytes()).tuples().collect();
+    let mut nums: Vec<u64> = ParseUnsigned::new(nums.bytes()).collect();
 
-        let first: u64 = bytes.next()?;
-        let second: u64 = bytes.next()?;
+    ranges.sort_unstable();
+    nums.sort_unstable();
 
-        Some((first, second))
-    });
+    let mut range = (0, 0);
+    let mut merged = Vec::new();
 
-    let mut merged: Vec<(u64, u64)> = Vec::with_capacity(192);
-
-    let mut current = ranges.next();
-
-    while let Some(r) = current {
-        let mut overlap = false;
-
-        for i in 0..merged.len() {
-            let m = &merged[i];
-
-            if r.0 <= m.1 && r.1 >= m.0 {
-                overlap = true;
-                current = Some((r.0.min(m.0), r.1.max(m.1)));
-                merged.remove(i);
-
-                break;
-            }
-        }
-
-        if !overlap {
-            let mut min = 0;
-            let mut max = merged.len();
-
-            while min < max {
-                let mid = (min + max) / 2;
-
-                if r.0 < merged[mid].0 {
-                    max = mid;
-                } else if r.0 > merged[mid].1 {
-                    min = mid + 1;
-                } else {
-                    min = mid;
-                    max = mid;
-                }
-            }
-
-            merged.insert(min, r);
-
-            current = ranges.next();
+    for (start, end) in ranges {
+        if range.1 > start {
+            range.1 = range.1.max(end + 1);
+        } else {
+            merged.push(range);
+            range = (start, end + 1);
         }
     }
+    merged.push(range);
 
-    let mut p1 = 0;
-
-    for b in lines {
-        let n = ParseUnsigned::new(b).next().unwrap();
-
-        let mut min = 0;
-        let mut max = merged.len();
-
-        while min < max {
-            let mid = (min + max) / 2;
-
-            if n < merged[mid].0 {
-                max = mid;
-            } else if n > merged[mid].1 {
-                min = mid + 1;
-            } else {
-                min = mid;
-                max = mid;
-            }
-        }
-
-        if min < merged.len() && merged[min].0 <= n && n <= merged[min].1 {
-            p1 += 1;
-        }
-    }
-
-    let p2 = merged.iter().map(|r| r.1 - r.0 + 1).sum();
-
-    (p1, p2)
+    (merged, nums)
 }
 
-pub fn part1(input: &Input) -> u64 {
-    input.0
+pub fn part1((ranges, nums): &Input) -> usize {
+    nums.iter()
+        .filter(|&n| {
+            ranges
+                .binary_search_by(|(start, end)| {
+                    if n < start {
+                        std::cmp::Ordering::Greater
+                    } else if n > end {
+                        std::cmp::Ordering::Less
+                    } else {
+                        std::cmp::Ordering::Equal
+                    }
+                })
+                .is_ok()
+        })
+        .count()
 }
 
-pub fn part2(input: &Input) -> u64 {
-    input.1
+pub fn part2((ranges, _): &Input) -> u64 {
+    ranges.iter().map(|(start, end)| end - start).sum()
 }
 
 // Answers for my input:
