@@ -14,7 +14,6 @@ pub fn parse(input: &str) -> Input {
         Some((first, second))
     });
 
-    let mut active: Vec<bool> = Vec::with_capacity(192);
     let mut merged: Vec<(u64, u64)> = Vec::with_capacity(192);
 
     let mut current = ranges.next();
@@ -23,24 +22,36 @@ pub fn parse(input: &str) -> Input {
         let mut overlap = false;
 
         for i in 0..merged.len() {
-            if !active[i] {
-                continue;
-            }
-
             let m = &merged[i];
 
             if r.0 <= m.1 && r.1 >= m.0 {
                 overlap = true;
-                active[i] = false;
                 current = Some((r.0.min(m.0), r.1.max(m.1)));
+                merged.remove(i);
 
                 break;
             }
         }
 
         if !overlap {
-            merged.push(r);
-            active.push(true);
+            let mut min = 0;
+            let mut max = merged.len();
+
+            while min < max {
+                let mid = (min + max) / 2;
+
+                if r.0 < merged[mid].0 {
+                    max = mid;
+                } else if r.0 > merged[mid].1 {
+                    min = mid + 1;
+                } else {
+                    min = mid;
+                    max = mid;
+                }
+            }
+
+            merged.insert(min, r);
+
             current = ranges.next();
         }
     }
@@ -50,19 +61,28 @@ pub fn parse(input: &str) -> Input {
     for b in lines {
         let n = ParseUnsigned::new(b).next().unwrap();
 
-        p1 += active
-            .iter()
-            .zip(merged.iter())
-            .filter(|(a, _)| **a)
-            .any(|(_, r)| r.0 <= n && n <= r.1) as u64;
+        let mut min = 0;
+        let mut max = merged.len();
+
+        while min < max {
+            let mid = (min + max) / 2;
+
+            if n < merged[mid].0 {
+                max = mid;
+            } else if n > merged[mid].1 {
+                min = mid + 1;
+            } else {
+                min = mid;
+                max = mid;
+            }
+        }
+
+        if min < merged.len() && merged[min].0 <= n && n <= merged[min].1 {
+            p1 += 1;
+        }
     }
 
-    let p2 = active
-        .iter()
-        .zip(merged.iter())
-        .filter(|(a, _)| **a)
-        .map(|(_, r)| r.1 - r.0 + 1)
-        .sum();
+    let p2 = merged.iter().map(|r| r.1 - r.0 + 1).sum();
 
     (p1, p2)
 }
