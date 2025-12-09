@@ -46,6 +46,7 @@ pub fn parse(input: &str) -> Input {
     }
 
     let mut p1 = 0;
+
     for b in lines {
         let n = ParseUnsigned::new(b).next().unwrap();
 
