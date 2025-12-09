@@ -32,26 +32,7 @@ pub fn parse(input: &str) -> Input {
     (merged, nums)
 }
 
-// pub fn part1((ranges, nums): &Input) -> usize {
-//     nums.iter()
-//         .filter(|&&n| {
-//             ranges
-//                 .binary_search_by(|r| {
-//                     if n < r.start {
-//                         std::cmp::Ordering::Greater
-//                     } else if n > r.end {
-//                         std::cmp::Ordering::Less
-//                     } else {
-//                         std::cmp::Ordering::Equal
-//                     }
-//                 })
-//                 .is_ok()
-//         })
-//         .count()
-// }
-
 pub fn part1((ranges, nums): &Input) -> usize {
-    println!("{} {}", ranges.len(), nums.len());
     ranges
         .iter()
         .map(|r| {
