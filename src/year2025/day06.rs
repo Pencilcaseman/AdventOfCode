@@ -1,44 +1,66 @@
-use itertools::Itertools;
-
 use crate::util::parse::ParseUnsigned;
 
-type Input = (u64, u64);
+type Input<'a> = (Vec<&'a str>, &'a str);
 
-pub fn parse(input: &str) -> Input {
-    let mut lines = input.splitn(5, '\n');
-    let a = ParseUnsigned::<u64>::new(lines.next().unwrap().bytes());
-    let b = ParseUnsigned::<u64>::new(lines.next().unwrap().bytes());
-    let c = ParseUnsigned::<u64>::new(lines.next().unwrap().bytes());
-    let d = ParseUnsigned::<u64>::new(lines.next().unwrap().bytes());
-    let op = lines.next().unwrap().bytes().filter(|&b| b == b'+' || b == b'*');
+pub fn parse(input: &'_ str) -> Input<'_> {
+    let num_lines = input.bytes().filter(|&b| b == b'\n').count() + 1;
 
-    let part1: u64 = a
-        .zip(b)
-        .zip(c)
-        .zip(d)
-        .zip(op)
-        .map(|((((a, b), c), d), op)| {
+    let mut lines = input.splitn(num_lines, '\n');
+
+    let nums: Vec<&str> = lines.by_ref().take(num_lines - 1).collect();
+    let ops = lines.next().unwrap();
+
+    (nums, ops)
+}
+
+pub fn part1((nums, ops): &Input) -> u64 {
+    let mut num_iterators: Vec<_> =
+        nums.iter().map(|n| ParseUnsigned::<u64>::new(n.bytes())).collect();
+
+    ops.bytes()
+        .filter(|&b| b == b'+' || b == b'*')
+        .map(|op| {
+            let thing =
+                num_iterators.iter_mut().map(|iter| iter.next().unwrap());
+
+            if op == b'+' { thing.sum::<u64>() } else { thing.product() }
+        })
+        .sum()
+}
+
+pub fn part2((nums, ops): &Input) -> u64 {
+    let mut byte_iterators: Vec<_> = nums.iter().map(|n| n.bytes()).collect();
+
+    let mut buf = Vec::new();
+
+    ops.bytes()
+        .filter(|&b| b == b'+' || b == b'*')
+        .map(|op| {
+            buf.clear();
+
+            while let Some(num) = byte_iterators
+                .iter_mut()
+                .filter_map(|i| i.next())
+                .fold(None, |num, byte| {
+                    if byte.is_ascii_digit() {
+                        Some(num.unwrap_or(0) * 10 + (byte - b'0') as u64)
+                    } else {
+                        num
+                    }
+                })
+            {
+                buf.push(num);
+            }
+
             if op == b'+' {
-                a + b + c + d
-            } else if op == b'*' {
-                a * b * c * d
+                buf.iter().sum::<u64>()
             } else {
-                panic!()
+                buf.iter().product()
             }
         })
-        .sum();
-
-    (part1, 0)
-}
-
-pub fn part1(input: &Input) -> u64 {
-    input.0
-}
-
-pub fn part2(input: &Input) -> u64 {
-    input.1
+        .sum()
 }
 
 // Answers for my input:
 // Part 1: 6209956042374
-// Part 2:
+// Part 2: 12608160008022
