@@ -12,11 +12,11 @@ struct Args {
 
     /// More precise timing at the cost of runtime.
     ///
-    /// Run each solution for 1 second and averages the times.
+    /// Run each solution for n milliseconds and average the results
     ///
     /// *RUN BENCHMARKS FOR RELIABLE RESULTS*
-    #[arg(short, long, default_value_t = false)]
-    precise_timing: bool,
+    #[arg(short, long)]
+    precise_timing: Option<u64>,
 }
 
 #[allow(clippy::cast_precision_loss)]
@@ -56,12 +56,12 @@ fn main() {
         let mut part1 = 0;
         let mut part2 = 0;
 
-        let elapsed = if args.precise_timing {
-            let one_second = std::time::Duration::from_secs(1);
+        let elapsed = if let Some(time) = args.precise_timing {
+            let target_time = std::time::Duration::from_millis(time);
             let mut samples = 0;
 
             let start = std::time::Instant::now();
-            while start.elapsed() < one_second {
+            while start.elapsed() < target_time {
                 (part1, part2) = std::hint::black_box(runner(&data));
                 samples += 1;
             }
