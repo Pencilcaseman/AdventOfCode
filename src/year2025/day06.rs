@@ -29,33 +29,25 @@ pub fn part1((nums, ops): &Input) -> u64 {
 }
 
 pub fn part2((nums, ops): &Input) -> u64 {
-    let mut byte_iterators: Vec<_> = nums.iter().map(|n| n.bytes()).collect();
+    let len = nums[0].len();
+    let mut vertical_nums = vec![0; len];
 
-    let mut buf = Vec::new();
+    for line in nums {
+        for (vert, byte) in vertical_nums.iter_mut().zip(line.bytes()) {
+            if byte.is_ascii_digit() {
+                *vert = *vert * 10 + (byte - b'0') as u64;
+            }
+        }
+    }
 
     ops.bytes()
         .filter(|&b| b == b'+' || b == b'*')
-        .map(|op| {
-            buf.clear();
-
-            while let Some(num) = byte_iterators
-                .iter_mut()
-                .filter_map(|i| i.next())
-                .fold(None, |num, byte| {
-                    if byte.is_ascii_digit() {
-                        Some(num.unwrap_or(0) * 10 + (byte - b'0') as u64)
-                    } else {
-                        num
-                    }
-                })
-            {
-                buf.push(num);
-            }
-
+        .zip(vertical_nums.split(|&n| n == 0))
+        .map(|(op, vert)| {
             if op == b'+' {
-                buf.iter().sum::<u64>()
+                vert.iter().sum::<u64>()
             } else {
-                buf.iter().product()
+                vert.iter().product()
             }
         })
         .sum()
