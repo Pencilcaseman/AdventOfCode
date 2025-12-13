@@ -64,7 +64,7 @@ fn single_sum_r(n: u64, r: u8) -> u64 {
 fn single_sum(n: u64) -> (u64, u64) {
     let p1 = single_sum_r(n, 2);
     let p2 = p1
-        + (3..(num_length(n) + 1))
+        + (3..=num_length(n))
             .map(|r| {
                 let sign = DOUBLE_COUNT_REMOVAL[r as usize];
                 let val = single_sum_r(n, r) as i64;
