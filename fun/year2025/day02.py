@@ -98,23 +98,59 @@ def single_sum(n):
     return sum
 
 
+# def single_sum_r(n, r):
+#     sum = 0
+#
+#     # q is pattern length
+#     q = 1
+#     # for q in range(1, 10):
+#     while 10 ** (q - 1) * p(r, q) <= n:
+#         s = sum_between_inclusive(10 ** (q - 1), t_v2(n, r, q))
+#
+#         # Is this even correct?
+#         # if s < 0:
+#         #     break
+#
+#         # print(f"p(r, q) = {p(r, q)}")
+#
+#         sum += s * p(r, q)
+#         q += 1
+#
+#     return sum
+
+
+# def single_sum_r(n, r):
+#     sum = 0
+#
+#     # q is pattern length
+#     q = 1
+#
+#     while 10 ** (q - 1) * p(r, q) <= n:
+#         q += 1
+#
+#     print(q)
+#     print()
+#
+#     s = sum_between_inclusive(1, t_v2(n, r, q))
+#     sum += s * p(r, q)
+#
+#     return sum
+
+
 def single_sum_r(n, r):
     sum = 0
 
     # q is pattern length
     q = 1
-    # for q in range(1, 10):
     while 10 ** (q - 1) * p(r, q) <= n:
         s = sum_between_inclusive(10 ** (q - 1), t_v2(n, r, q))
 
-        # Is this even correct?
-        # if s < 0:
-        #     break
-
-        # print(f"p(r, q) = {p(r, q)}")
+        print(10 ** (q - 1), t_v2(n, r, q), p(r, q))
 
         sum += s * p(r, q)
         q += 1
+
+    print()
 
     return sum
 
