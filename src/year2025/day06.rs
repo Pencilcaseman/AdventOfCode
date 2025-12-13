@@ -28,19 +28,27 @@ pub fn parse(input: &'_ str) -> Input<'_> {
 }
 
 pub fn part1((nums, ops): &Input) -> u64 {
-    let mut num_iterators: Vec<_> =
-        nums.iter().map(|n| ParseUnsigned::<u64>::new(n.bytes())).collect();
+    let len = ops.len();
+    let mut results = vec![0; len];
 
-    ops.iter()
-        .map(|op| {
-            let tmp = num_iterators.iter_mut().map(|iter| iter.next().unwrap());
+    for row in nums {
+        results
+            .iter_mut()
+            .zip(ParseUnsigned::<u64>::new(row.bytes()))
+            .zip(ops.iter())
+            .for_each(|((result, num), op)| match op {
+                Op::Sum => *result += num,
+                Op::Prod => {
+                    if *result == 0 {
+                        *result = num;
+                    } else {
+                        *result *= num;
+                    }
+                }
+            })
+    }
 
-            match op {
-                Op::Sum => tmp.sum::<u64>(),
-                Op::Prod => tmp.product(),
-            }
-        })
-        .sum()
+    results.into_iter().sum()
 }
 
 pub fn part2((nums, ops): &Input) -> u64 {
