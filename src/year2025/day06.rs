@@ -57,7 +57,7 @@ pub fn part2((nums, ops): &Input) -> u64 {
 
     for line in nums {
         for (vert, byte) in vertical_nums.iter_mut().zip(line.bytes()) {
-            if byte.is_ascii_digit() {
+            if byte.wrapping_sub(b'0') < 10 {
                 *vert = *vert * 10 + (byte - b'0') as u64;
             }
         }
