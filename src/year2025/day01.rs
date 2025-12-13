@@ -1,3 +1,14 @@
+//! # Secret Entrance
+//!
+//! Part 1 is quite simple -- just keep track of the angle of the dial
+//! (modulo 100) and count each time it lands on zero.
+//!
+//! Part 2 is a little more tricky, mainly due to left rotations.
+//!
+//! To improve performance slightly, we can "stream" the input bytes and
+//! "generate" each value as bytes come in, processing them when a new-line is
+//! seen (hence the need for the extra `std::iter::once(b'\n')`.)
+
 use num_traits::Euclid;
 
 type Input = (i32, i32);
