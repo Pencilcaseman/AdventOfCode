@@ -28,8 +28,7 @@ pub fn parse(input: &'_ str) -> Input<'_> {
 }
 
 pub fn part1((nums, ops): &Input) -> u64 {
-    let len = ops.len();
-    let mut results = vec![0; len];
+    let mut results = vec![0; ops.len()];
 
     for row in nums {
         results
@@ -52,8 +51,7 @@ pub fn part1((nums, ops): &Input) -> u64 {
 }
 
 pub fn part2((nums, ops): &Input) -> u64 {
-    let len = nums[0].len();
-    let mut vertical_nums = vec![0; len];
+    let mut vertical_nums = vec![0; nums[0].len()];
 
     for line in nums {
         for (vert, byte) in vertical_nums.iter_mut().zip(line.bytes()) {
