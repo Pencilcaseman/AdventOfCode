@@ -1,6 +1,5 @@
 use aoc::year2025::day07::*;
 
-// Note: Modified to be 4 lines rather than 3 to match the real input
 const EXAMPLE_INPUT: &str = "\
 .......S.......
 ...............
@@ -28,5 +27,5 @@ fn test_part1() {
 #[test]
 fn test_part2() {
     let input = parse(EXAMPLE_INPUT);
-    assert_eq!(part2(&input), 0);
+    assert_eq!(part2(&input), 40);
 }
