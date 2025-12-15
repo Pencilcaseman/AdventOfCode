@@ -1,63 +1,36 @@
-use ndarray::Array2;
-
-use crate::util::parse::grid_to_ndarray;
-
-type Input = Array2<u8>;
+type Input = (u64, u64);
 
 pub fn parse(input: &str) -> Input {
-    grid_to_ndarray(input.bytes())
-}
+    let mut part1 = 0;
+    let mut current = [0u64; 192];
 
-pub fn part1(input: &Input) -> i32 {
-    let mut current = vec![0; input.dim().1];
-    let mut total = 0;
-
-    for row in input.rows() {
-        for i in 0..input.dim().1 {
-            match row[i] {
-                b'.' => (),
-                b'S' => {
-                    current[i] = 1;
-                }
-                b'^' => {
-                    if current[i] == 1 {
-                        current[i] = 0;
-                        current[i - 1] = 1;
-                        current[i + 1] = 1;
-                        total += 1;
-                    }
-                }
-                _ => unreachable!(),
+    for (_, line) in input.lines().enumerate().filter(|(i, _)| i % 2 == 0) {
+        line.bytes().enumerate().for_each(|(i, b)| match b {
+            b'S' => {
+                current[i] = 1;
             }
-        }
+            b'^' => {
+                if current[i] > 0 {
+                    part1 += 1;
+
+                    current[i - 1] += current[i];
+                    current[i + 1] += current[i];
+                    current[i] = 0;
+                }
+            }
+            _ => (),
+        });
     }
 
-    total
+    (part1, current.into_iter().sum())
+}
+
+pub fn part1(input: &Input) -> u64 {
+    input.0
 }
 
 pub fn part2(input: &Input) -> u64 {
-    let mut current = vec![0u64; input.dim().1];
-
-    for row in input.rows() {
-        for i in 0..input.dim().1 {
-            match row[i] {
-                b'.' => (),
-                b'S' => {
-                    current[i] = 1;
-                }
-                b'^' => {
-                    if current[i] > 0 {
-                        current[i - 1] += current[i];
-                        current[i + 1] += current[i];
-                        current[i] = 0;
-                    }
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    current.into_iter().sum()
+    input.1
 }
 
 // Answers for my input:
