@@ -31,6 +31,7 @@ pub mod year2025 {
     mod day05_test;
     mod day06_test;
     mod day07_test;
+    mod day08_test;
 }
 
 pub mod util {
