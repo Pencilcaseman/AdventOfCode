@@ -1,43 +1,43 @@
 pub mod year2023 {
-    mod day01_test;
-    mod day02_test;
-    mod day03_test;
-    mod day04_test;
+    mod day01;
+    mod day02;
+    mod day03;
+    mod day04;
 }
 
 pub mod year2024 {
-    mod day01_test;
-    mod day02_test;
-    mod day03_test;
-    mod day04_test;
-    mod day05_test;
-    mod day06_test;
-    mod day07_test;
-    mod day08_test;
-    mod day09_test;
-    mod day10_test;
-    mod day11_test;
-    mod day12_test;
-    mod day13_test;
-    mod day14_test;
-    mod day15_test;
+    mod day01;
+    mod day02;
+    mod day03;
+    mod day04;
+    mod day05;
+    mod day06;
+    mod day07;
+    mod day08;
+    mod day09;
+    mod day10;
+    mod day11;
+    mod day12;
+    mod day13;
+    mod day14;
+    mod day15;
 }
 
 pub mod year2025 {
-    mod day01_test;
-    mod day02_test;
-    mod day03_test;
-    mod day04_test;
-    mod day05_test;
-    mod day06_test;
-    mod day07_test;
-    mod day08_test;
-    mod day09_test;
-    mod day10_test;
-    mod day11_test;
-    mod day12_test;
+    mod day01;
+    mod day02;
+    mod day03;
+    mod day04;
+    mod day05;
+    mod day06;
+    mod day07;
+    mod day08;
+    mod day09;
+    mod day10;
+    mod day11;
+    mod day12;
 }
 
 pub mod util {
-    mod parse_test;
+    mod parse;
 }

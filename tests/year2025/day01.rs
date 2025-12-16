@@ -21,7 +21,6 @@ L150";
 #[test]
 fn test_sample_part1() {
     let input = parse(EXAMPLE_INPUT);
-    println!("{input:?}");
     assert_eq!(part1(&input), 3);
 }
 
