@@ -1,12 +1,8 @@
 // TODO: usize vs u64?
 
-use std::{
-    cmp::{Ordering, min},
-    collections::HashSet,
-};
+use std::cmp::Ordering;
 
 use itertools::Itertools;
-use ndarray::Array2;
 use rayon::prelude::*;
 
 use crate::util::parse::ParseUnsigned;
@@ -41,7 +37,7 @@ pub fn solve(
         })
         .collect();
 
-    pairwise_distances.par_sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+    pairwise_distances.par_sort_unstable_by_key(|x| x.0);
 
     let mut dsu = DisjointSetUnion::new(input.len());
 
@@ -56,7 +52,7 @@ pub fn solve(
     let part1 = counts.into_iter().rev().take(3).product();
     let mut part2 = 0;
 
-    while let Some((_, i, j)) = iter.next() {
+    for (_, i, j) in iter {
         if dsu.merge(i, j) && dsu.counts().iter().max() == Some(&input.len()) {
             part2 = input[i].0 * input[j].0;
         }
@@ -125,20 +121,12 @@ impl DisjointSetUnion {
     }
 }
 
-fn dist(a: &(usize, usize, usize), b: &(usize, usize, usize)) -> f64 {
-    let ax = a.0 as f64;
-    let ay = a.1 as f64;
-    let az = a.2 as f64;
+fn dist(a: &(usize, usize, usize), b: &(usize, usize, usize)) -> usize {
+    let dx = a.0.abs_diff(b.0);
+    let dy = a.1.abs_diff(b.1);
+    let dz = a.2.abs_diff(b.2);
 
-    let bx = b.0 as f64;
-    let by = b.1 as f64;
-    let bz = b.2 as f64;
-
-    let dx = bx - ax;
-    let dy = by - ay;
-    let dz = bz - az;
-
-    (dx * dx + dy * dy + dz * dz).cbrt()
+    dx * dx + dy * dy + dz * dz
 }
 
 // Answers for my input:
