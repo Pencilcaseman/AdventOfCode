@@ -1,3 +1,22 @@
+//! # Playground
+//!
+//! This challenge is very easy to solve once you realize it maps exactly to
+//! finding a minimum spanning tree (MST) of the junction locations.
+//!
+//! To find the MST efficiently, a disjoint set union (DSU) data structure is
+//! used to efficiently check when a circuit contains a junction box. By
+//! simultaneously tracking the size of each circuit, the solutions to part 1
+//! and part 2drop out quite nicely.
+//!
+//! To improve the performance of the code, we split the input across multiple
+//! threads and place edges in buckets according to their approximate length.
+//! These buckets are then lazily flattened and sorted so they appear as a
+//! contiguous array. This saves a significant amount of unnecessary
+//! computation.
+//!
+//! A few optimizations to the DSU algorithm also provide a nice performance
+//! improvement.
+
 use itertools::Itertools;
 use rayon::prelude::*;
 
@@ -20,14 +39,6 @@ pub fn part1(input: &Input) -> u32 {
 
 pub fn part2(input: &Input) -> u32 {
     input.1
-}
-
-fn dist(a: &(u32, u32, u32), b: &(u32, u32, u32)) -> u64 {
-    let dx = a.0.abs_diff(b.0) as u64;
-    let dy = a.1.abs_diff(b.1) as u64;
-    let dz = a.2.abs_diff(b.2) as u64;
-
-    dx * dx + dy * dy + dz * dz
 }
 
 pub fn parallel_load(input: &[(u32, u32, u32)]) -> BucketThreadEdge {
@@ -89,6 +100,14 @@ pub fn solve(input: Vec<(u32, u32, u32)>, steps: usize) -> (u32, u32) {
     }
 
     (part1, part2)
+}
+
+fn dist(a: &(u32, u32, u32), b: &(u32, u32, u32)) -> u64 {
+    let dx = a.0.abs_diff(b.0) as u64;
+    let dy = a.1.abs_diff(b.1) as u64;
+    let dz = a.2.abs_diff(b.2) as u64;
+
+    dx * dx + dy * dy + dz * dz
 }
 
 fn flatten(
