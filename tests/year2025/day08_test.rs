@@ -26,13 +26,13 @@ const EXAMPLE_INPUT: &str = "\
 #[test]
 fn test_part1() {
     let input =
-        ParseUnsigned::<usize>::new(EXAMPLE_INPUT.bytes()).tuples().collect();
+        ParseUnsigned::<u32>::new(EXAMPLE_INPUT.bytes()).tuples().collect();
     assert_eq!(solve(input, 10).0, 40);
 }
 
 #[test]
 fn test_part2() {
     let input =
-        ParseUnsigned::<usize>::new(EXAMPLE_INPUT.bytes()).tuples().collect();
+        ParseUnsigned::<u32>::new(EXAMPLE_INPUT.bytes()).tuples().collect();
     assert_eq!(solve(input, 10).1, 25272);
 }
