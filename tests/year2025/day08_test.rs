@@ -1,4 +1,5 @@
-use aoc::year2025::day08::*;
+use aoc::{util::parse::ParseUnsigned, year2025::day08::*};
+use itertools::Itertools;
 
 const EXAMPLE_INPUT: &str = "\
 162,817,812
@@ -24,12 +25,14 @@ const EXAMPLE_INPUT: &str = "\
 
 #[test]
 fn test_part1() {
-    let input = parse(EXAMPLE_INPUT);
-    assert_eq!(part1(&input), 40);
+    let input =
+        ParseUnsigned::<usize>::new(EXAMPLE_INPUT.bytes()).tuples().collect();
+    assert_eq!(solve(input, 10).0, 40);
 }
 
 #[test]
 fn test_part2() {
-    let input = parse(EXAMPLE_INPUT);
-    assert_eq!(part2(&input), 0);
+    let input =
+        ParseUnsigned::<usize>::new(EXAMPLE_INPUT.bytes()).tuples().collect();
+    assert_eq!(solve(input, 10).1, 25272);
 }
