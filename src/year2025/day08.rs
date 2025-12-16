@@ -7,35 +7,47 @@ use rayon::prelude::*;
 
 use crate::util::parse::ParseUnsigned;
 
-type Input = (usize, usize);
+type Input = (u32, u32);
+
+const CUTOFF_LIMIT: usize = 20;
 
 pub fn parse(input: &str) -> Input {
     solve(ParseUnsigned::<usize>::new(input.bytes()).tuples().collect(), 1000)
 }
 
-pub fn part1(input: &Input) -> usize {
+pub fn part1(input: &Input) -> u32 {
     input.0
 }
 
-pub fn part2(input: &Input) -> usize {
+pub fn part2(input: &Input) -> u32 {
     input.1
 }
 
-pub fn solve(
-    input: Vec<(usize, usize, usize)>,
-    steps: usize,
-) -> (usize, usize) {
-    let mut pairwise_distances: Vec<_> = input
-        .iter()
-        .enumerate()
-        .flat_map(|(i, p1)| {
-            input
-                .iter()
-                .enumerate()
-                .skip(i + 1)
-                .map(move |(j, p2)| (dist(p1, p2), i, j))
-        })
-        .collect();
+fn dist(a: &(usize, usize, usize), b: &(usize, usize, usize)) -> usize {
+    let dx = a.0.abs_diff(b.0);
+    let dy = a.1.abs_diff(b.1);
+    let dz = a.2.abs_diff(b.2);
+
+    dx * dx + dy * dy + dz * dz
+}
+
+pub fn solve(input: Vec<(usize, usize, usize)>, steps: usize) -> (u32, u32) {
+    let mut pairwise_distances = Vec::new();
+    let mut cutoff = usize::MAX;
+
+    for i in 0..input.len() {
+        for j in (i + 1)..input.len() {
+            let d = dist(&input[i], &input[j]);
+            if d < cutoff {
+                pairwise_distances.push((d, i, j));
+            }
+        }
+
+        if i == CUTOFF_LIMIT {
+            pairwise_distances.par_sort_unstable_by_key(|x| x.0);
+            cutoff = pairwise_distances[steps - 1].0;
+        }
+    }
 
     pairwise_distances.par_sort_unstable_by_key(|x| x.0);
 
@@ -53,19 +65,21 @@ pub fn solve(
     let mut part2 = 0;
 
     for (_, i, j) in iter {
-        if dsu.merge(i, j) && dsu.counts().iter().max() == Some(&input.len()) {
+        if dsu.merge(i, j)
+            && *dsu.counts().iter().max().unwrap() == input.len() as u32
+        {
             part2 = input[i].0 * input[j].0;
         }
     }
 
-    (part1, part2)
+    (part1, part2 as u32)
 }
 
 #[derive(Debug)]
 struct DisjointSetUnion {
     parents: Vec<usize>,
-    ranks: Vec<usize>,
-    counts: Vec<usize>,
+    ranks: Vec<u8>,
+    counts: Vec<u32>,
 }
 
 impl DisjointSetUnion {
@@ -116,17 +130,9 @@ impl DisjointSetUnion {
         true
     }
 
-    fn counts(&self) -> &[usize] {
+    fn counts(&self) -> &[u32] {
         &self.counts
     }
-}
-
-fn dist(a: &(usize, usize, usize), b: &(usize, usize, usize)) -> usize {
-    let dx = a.0.abs_diff(b.0);
-    let dy = a.1.abs_diff(b.1);
-    let dz = a.2.abs_diff(b.2);
-
-    dx * dx + dy * dy + dz * dz
 }
 
 // Answers for my input:
