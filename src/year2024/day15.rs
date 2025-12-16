@@ -77,7 +77,7 @@ pub fn part1((grid, dirs, origin): &Input) -> usize {
 }
 
 #[must_use]
-pub fn part2(input: &Input) -> u32 {
+pub const fn part2(_input: &Input) -> u32 {
     0
 }
 
