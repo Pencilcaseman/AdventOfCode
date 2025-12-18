@@ -1,7 +1,16 @@
-//! transpose => 2x performance increase
+//! # Movie Theater
 //!
-//! Almost entirely from maneatingape's solution... Absolutely amazing.
-//! https://github.com/maneatingape/advent-of-code-rust/blob/main/src/year2025/day09.rs
+//! This one had me stumped. All credit for this solution goes to
+//! [maneatingape](https://github.com/maneatingape/advent-of-code-rust/blob/main/src/year2025/day09.rs)
+//! for this solution. I have made a couple small improvements, but I could not
+//! come up with this algorithm myself.
+//!
+//! Please check out maneatingape's solutions for a proper explanation of how
+//! this works.
+//!
+//! Interestingly, transposing the input gives a 2x speedup for part 2 because
+//! there is only ever a single interval to process; this is due to the input
+//! being a circle with a vertical cutout in it.
 
 use itertools::Itertools;
 
@@ -10,28 +19,76 @@ use crate::util::parse::ParseUnsigned;
 type Input = Vec<(u32, u32)>;
 
 pub fn parse(input: &str) -> Input {
-    ParseUnsigned::<u32>::new(input.bytes()).tuples().collect()
+    let mut tmp: Input =
+        ParseUnsigned::<u32>::new(input.bytes()).tuples().collect();
+    tmp.sort_unstable_by_key(|(row, col)| (*col, *row));
+    tmp
 }
 
 pub fn part1(input: &Input) -> u64 {
-    // dumb version
-    input
-        .iter()
-        .enumerate()
-        .flat_map(|(i, (p0_row, p0_col))| {
-            input.iter().skip(i + 1).map(|(p1_row, p1_col)| {
-                area(*p0_row, *p0_col, *p1_row, *p1_col)
-            })
-        })
+    //
+    // if for some (x, y) there exists (xx, yy)
+    // s.t. xx < x and yy < y ==> (x, y) cannot be a corner
+    //
+
+    let (top_left, bottom_left) = corners(input.iter().copied());
+    let (top_right, bottom_right) = corners(input.iter().copied().rev());
+
+    let a0 = max_area(&top_left, &bottom_right);
+    let a1 = max_area(&bottom_left, &top_right);
+    a0.max(a1)
+}
+
+fn max_area(c0: &[(u32, u32)], c1: &[(u32, u32)]) -> u64 {
+    c0.iter()
+        .flat_map(|p0| c1.iter().map(|p1| area(p0.0, p0.1, p1.0, p1.1)))
         .max()
         .unwrap()
 }
 
-pub fn part2(input: &Input) -> u64 {
-    let mut tmp = input.to_vec();
-    tmp.sort_unstable_by_key(|(row, col)| (*col, *row));
+fn corners(
+    iter: impl Iterator<Item = (u32, u32)>,
+) -> (Vec<(u32, u32)>, Vec<(u32, u32)>) {
+    let mut top_tiles = Vec::new();
+    let mut bottom_tiles = Vec::new();
 
-    debug_assert!(tmp.len().is_multiple_of(2), "Invalid input");
+    let mut top_min_row = u32::MAX;
+    let mut bottom_max_row = 0;
+
+    let mut peek = iter.peekable();
+
+    while let Some(top) = peek.next() {
+        // Take all values in this column. There will always be at least one
+        // value here
+        let mut bottom = 0;
+
+        while let Some(n) = peek.next_if(|p| p.1 == top.1) {
+            bottom = n.0;
+        }
+
+        debug_assert_ne!(bottom, 0);
+
+        let (min_row, max_row, col) =
+            (top.0.min(bottom), top.0.max(bottom), top.1);
+
+        // If this value is extreme in either way, take it
+
+        if min_row < top_min_row {
+            top_tiles.push((min_row, col));
+            top_min_row = min_row;
+        }
+
+        if max_row > bottom_max_row {
+            bottom_tiles.push((max_row, col));
+            bottom_max_row = max_row;
+        }
+    }
+
+    (top_tiles, bottom_tiles)
+}
+
+pub fn part2(input: &Input) -> u64 {
+    debug_assert!(input.len().is_multiple_of(2), "Invalid input");
 
     let mut candidates: Vec<Candidate> = Vec::with_capacity(512);
     let mut vertical_edges = Vec::with_capacity(4);
@@ -39,7 +96,7 @@ pub fn part2(input: &Input) -> u64 {
 
     let mut max_rect_area = 0;
 
-    for ((row0, col), (row1, col1)) in tmp.into_iter().tuples() {
+    for (&(row0, col), &(row1, col1)) in input.iter().tuples() {
         // The input, sorted by (row, column), gives pairs of red tiles forming
         // horizontal edges on the same row with differing columns
         debug_assert_eq!(col, col1, "Invalid input");
