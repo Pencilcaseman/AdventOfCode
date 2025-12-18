@@ -29,9 +29,9 @@ pub fn part2(input: &Input) -> u64 {
 
     debug_assert!(tmp.len().is_multiple_of(2), "Invalid input");
 
-    let mut candidates = Vec::new();
-    let mut vertical_edges = Vec::new();
-    let mut intervals = Vec::new();
+    let mut candidates = Vec::with_capacity(128);
+    let mut vertical_edges = Vec::with_capacity(128);
+    let mut intervals = Vec::with_capacity(128);
 
     let mut max_rect_area = 0;
 
@@ -40,20 +40,22 @@ pub fn part2(input: &Input) -> u64 {
         // horizontal edges on the same row with differing columns
         debug_assert_eq!(row, row1, "Invalid input");
 
-        update_vertical_edge(*col0, &mut vertical_edges);
-        update_vertical_edge(*col1, &mut vertical_edges);
+        [col0, col1]
+            .into_iter()
+            .for_each(|&col| update_vertical_edge(col, &mut vertical_edges));
 
         edges_to_intervals(&vertical_edges, &mut intervals);
 
         // Update largest rectangle
         // - Valid if candidate interval contains the current position
         // - Check if rectangle is larger than largest previously found
-        [col0, col1].into_iter().for_each(|col| {
-            candidates.iter().for_each(|c: &Candidate| {
-                let a = area(&c.pos, &(*row, *col));
-
-                if c.interval.contains(*col) && a > max_rect_area {
-                    max_rect_area = a;
+        candidates.iter().for_each(|c: &Candidate| {
+            [col0, col1].into_iter().for_each(|col| {
+                if c.interval.contains(*col) {
+                    let a = area(&c.pos, &(*row, *col));
+                    if a > max_rect_area {
+                        max_rect_area = a;
+                    }
                 }
             });
         });
@@ -139,6 +141,7 @@ fn edges_to_intervals(edges: &[u64], intervals: &mut Vec<Interval>) {
     );
 }
 
+/// Hello, World!
 fn area(p0: &(u64, u64), p1: &(u64, u64)) -> u64 {
     (p0.0.abs_diff(p1.0) + 1) * (p0.1.abs_diff(p1.1) + 1)
 }
