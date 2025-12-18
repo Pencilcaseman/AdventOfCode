@@ -60,13 +60,11 @@ fn corners(
     while let Some(top) = peek.next() {
         // Take all values in this column. There will always be at least one
         // value here
-        let mut bottom = 0;
+        let mut bottom = top.0;
 
         while let Some(n) = peek.next_if(|p| p.1 == top.1) {
             bottom = n.0;
         }
-
-        debug_assert_ne!(bottom, 0);
 
         let (min_row, max_row, col) =
             (top.0.min(bottom), top.0.max(bottom), top.1);
