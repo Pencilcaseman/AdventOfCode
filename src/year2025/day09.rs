@@ -1,3 +1,4 @@
+//! transpose => 2x performance increase
 //!
 //! Almost entirely from maneatingape's solution... Absolutely amazing.
 //! https://github.com/maneatingape/advent-of-code-rust/blob/main/src/year2025/day09.rs
@@ -28,7 +29,7 @@ pub fn part1(input: &Input) -> u64 {
 
 pub fn part2(input: &Input) -> u64 {
     let mut tmp = input.to_vec();
-    tmp.sort_unstable();
+    tmp.sort_unstable_by_key(|(row, col)| (*col, *row));
 
     debug_assert!(tmp.len().is_multiple_of(2), "Invalid input");
 
@@ -38,13 +39,13 @@ pub fn part2(input: &Input) -> u64 {
 
     let mut max_rect_area = 0;
 
-    for ((row, col0), (row1, col1)) in tmp.into_iter().tuples() {
+    for ((row0, col), (row1, col1)) in tmp.into_iter().tuples() {
         // The input, sorted by (row, column), gives pairs of red tiles forming
         // horizontal edges on the same row with differing columns
-        debug_assert_eq!(row, row1, "Invalid input");
+        debug_assert_eq!(col, col1, "Invalid input");
 
-        for col in [col0, col1] {
-            update_vertical_edge(col, &mut vertical_edges);
+        for row in [row0, row1] {
+            update_vertical_edge(row, &mut vertical_edges);
         }
 
         edges_to_intervals(&vertical_edges, &mut intervals);
@@ -53,8 +54,8 @@ pub fn part2(input: &Input) -> u64 {
         // - Valid if candidate interval contains the current position
         // - Check if rectangle is larger than largest previously found
         for c in &candidates {
-            for col in [col0, col1] {
-                if c.interval.contains(col) {
+            for row in [row0, row1] {
+                if c.interval.contains(row) {
                     max_rect_area =
                         max_rect_area.max(area(c.row, c.col, row, col));
                 }
@@ -64,7 +65,7 @@ pub fn part2(input: &Input) -> u64 {
         // Update candidates:
         // - If no interval contains the candidate, it is no longer valid
         candidates.retain_mut(|c| {
-            if let Some(interval) = intervals.iter().find(|i| i.contains(c.col))
+            if let Some(interval) = intervals.iter().find(|i| i.contains(c.row))
             {
                 c.interval = c.interval.intersection(*interval);
                 true
@@ -76,11 +77,11 @@ pub fn part2(input: &Input) -> u64 {
         // Add new candidates
         // - If an existing interval contains this position, it is a candidate
         //   for a rectangle
-        for col in [col0, col1] {
+        for row in [row0, row1] {
             // Only one interval can contain the current column
-            if let Some(&interval) = intervals.iter().find(|i| i.contains(col))
+            if let Some(&interval) = intervals.iter().find(|i| i.contains(row))
             {
-                candidates.push(Candidate { row: row, col, interval })
+                candidates.push(Candidate { row, col, interval })
             }
         }
     }
