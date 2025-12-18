@@ -6,65 +6,65 @@ use itertools::Itertools;
 
 use crate::util::parse::ParseUnsigned;
 
-type Input = Vec<(u64, u64)>;
+type Input = Vec<(u32, u32)>;
 
 pub fn parse(input: &str) -> Input {
-    ParseUnsigned::<u64>::new(input.bytes()).tuples().collect()
+    ParseUnsigned::<u32>::new(input.bytes()).tuples().collect()
 }
 
 pub fn part1(input: &Input) -> u64 {
     // dumb version
-
     input
         .iter()
         .enumerate()
-        .flat_map(|(i, p0)| input.iter().skip(i + 1).map(|p1| area(p0, p1)))
+        .flat_map(|(i, (p0_row, p0_col))| {
+            input.iter().skip(i + 1).map(|(p1_row, p1_col)| {
+                area(*p0_row, *p0_col, *p1_row, *p1_col)
+            })
+        })
         .max()
         .unwrap()
 }
 
 pub fn part2(input: &Input) -> u64 {
     let mut tmp = input.to_vec();
-    tmp.sort_unstable_by_key(|&(row, col)| (row, col));
+    tmp.sort_unstable();
 
     debug_assert!(tmp.len().is_multiple_of(2), "Invalid input");
 
-    let mut candidates = Vec::with_capacity(128);
-    let mut vertical_edges = Vec::with_capacity(128);
-    let mut intervals = Vec::with_capacity(128);
+    let mut candidates: Vec<Candidate> = Vec::with_capacity(512);
+    let mut vertical_edges = Vec::with_capacity(4);
+    let mut intervals = Vec::with_capacity(4);
 
     let mut max_rect_area = 0;
 
-    for ((row, col0), (row1, col1)) in tmp.iter().tuples() {
+    for ((row, col0), (row1, col1)) in tmp.into_iter().tuples() {
         // The input, sorted by (row, column), gives pairs of red tiles forming
         // horizontal edges on the same row with differing columns
         debug_assert_eq!(row, row1, "Invalid input");
 
-        [col0, col1]
-            .into_iter()
-            .for_each(|&col| update_vertical_edge(col, &mut vertical_edges));
+        for col in [col0, col1] {
+            update_vertical_edge(col, &mut vertical_edges);
+        }
 
         edges_to_intervals(&vertical_edges, &mut intervals);
 
         // Update largest rectangle
         // - Valid if candidate interval contains the current position
         // - Check if rectangle is larger than largest previously found
-        candidates.iter().for_each(|c: &Candidate| {
-            [col0, col1].into_iter().for_each(|col| {
-                if c.interval.contains(*col) {
-                    let a = area(&c.pos, &(*row, *col));
-                    if a > max_rect_area {
-                        max_rect_area = a;
-                    }
+        for c in &candidates {
+            for col in [col0, col1] {
+                if c.interval.contains(col) {
+                    max_rect_area =
+                        max_rect_area.max(area(c.row, c.col, row, col));
                 }
-            });
-        });
+            }
+        }
 
         // Update candidates:
         // - If no interval contains the candidate, it is no longer valid
         candidates.retain_mut(|c| {
-            if let Some(interval) =
-                intervals.iter().find(|i| i.contains(c.pos.1))
+            if let Some(interval) = intervals.iter().find(|i| i.contains(c.col))
             {
                 c.interval = c.interval.intersection(*interval);
                 true
@@ -76,28 +76,29 @@ pub fn part2(input: &Input) -> u64 {
         // Add new candidates
         // - If an existing interval contains this position, it is a candidate
         //   for a rectangle
-        [col0, col1].into_iter().for_each(|&col| {
+        for col in [col0, col1] {
             // Only one interval can contain the current column
             if let Some(&interval) = intervals.iter().find(|i| i.contains(col))
             {
-                candidates.push(Candidate { pos: (*row, col), interval })
+                candidates.push(Candidate { row: row, col, interval })
             }
-        });
+        }
     }
 
     max_rect_area
 }
 
 struct Candidate {
-    pos: (u64, u64),
+    row: u32,
+    col: u32,
     interval: Interval,
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Interval(u64, u64);
+struct Interval(u32, u32);
 
 impl Interval {
-    fn contains(&self, col: u64) -> bool {
+    fn contains(&self, col: u32) -> bool {
         self.0 <= col && col <= self.1
     }
 
@@ -115,7 +116,7 @@ impl Interval {
     }
 }
 
-fn update_vertical_edge(red_x: u64, vertical_edges: &mut Vec<u64>) {
+fn update_vertical_edge(red_x: u32, vertical_edges: &mut Vec<u32>) {
     match vertical_edges.binary_search(&red_x) {
         Ok(found) => {
             // Vertical edge already exists, so this red tile necessarily
@@ -129,21 +130,17 @@ fn update_vertical_edge(red_x: u64, vertical_edges: &mut Vec<u64>) {
     }
 }
 
-fn edges_to_intervals(edges: &[u64], intervals: &mut Vec<Interval>) {
+fn edges_to_intervals(edges: &[u32], intervals: &mut Vec<Interval>) {
     debug_assert!(edges.len().is_multiple_of(2));
 
     intervals.clear();
     intervals.extend(
-        edges
-            .iter()
-            .tuples::<(&u64, &u64)>()
-            .map(|(open, close)| Interval(*open, *close)),
+        edges.iter().tuples().map(|(open, close)| Interval(*open, *close)),
     );
 }
 
-/// Hello, World!
-fn area(p0: &(u64, u64), p1: &(u64, u64)) -> u64 {
-    (p0.0.abs_diff(p1.0) + 1) * (p0.1.abs_diff(p1.1) + 1)
+fn area(p0_row: u32, p0_col: u32, p1_row: u32, p1_col: u32) -> u64 {
+    (p0_row.abs_diff(p1_row) + 1) as u64 * (p0_col.abs_diff(p1_col) + 1) as u64
 }
 
 // Answers for my input:
