@@ -71,22 +71,6 @@ def find_free_variables(rref_mat):
     return free
 
 
-def free_variables_max_values(rref_mat, free_vars):
-    max_vals = [2048 for _ in range(len(free_vars))]
-
-    for row in rref_mat:
-        target = row[-1]
-
-        for idx, free in enumerate(free_vars):
-            if row[free] > 0 and target > 0:
-                # if all(x > 0 for x in row):
-                max_val = target // row[free]
-                if max_val < max_vals[idx]:
-                    max_vals[idx] = max_val
-
-    return max_vals
-
-
 def solve_with_attempt(rref_mat, free_vars, attempt):
     vars = len(rref_mat[0]) - 1
     solved = [0 for _ in range(vars)]
@@ -106,42 +90,11 @@ def solve_with_attempt(rref_mat, free_vars, attempt):
         for b_idx in range(len(free_vars)):
             num -= attempt[b_idx] * rref_mat[row][free_vars[b_idx]]
 
-            # if num < 0:
-            #     return None
-
         solved[col] = num
 
         col += 1
 
     return solved
-
-
-def solve(rref_mat, free_vars, free_max):
-    num_free = len(free_vars)
-    attempt = [0 for _ in range(num_free)]
-    best = None
-
-    if num_free == 0:
-        return solve_with_attempt(rref_mat, [], [])
-
-    while True:
-        res = solve_with_attempt(rref_mat, free_vars, attempt)
-
-        if all(x >= 0 for x in res):
-            if best is None or sum(res) < sum(best):
-                best = res
-
-        idx = num_free - 1
-        attempt[idx] += 1
-
-        while attempt[idx] > free_max[idx]:
-            attempt[idx] = 0
-
-            idx -= 1
-            if idx < 0:
-                return best
-
-            attempt[idx] += 1
 
 
 def solve_recursive(rref_mat, free_vars, attempt=None, depth=0):
@@ -163,7 +116,6 @@ def solve_recursive(rref_mat, free_vars, attempt=None, depth=0):
 
         # Undecided coefficients with opposite signs => no limit
         seen_neg = False
-        seen_pos = False
 
         index = 0
         col = 0
@@ -171,27 +123,17 @@ def solve_recursive(rref_mat, free_vars, attempt=None, depth=0):
             if index < len(attempt) and col == free_vars[index]:
                 target -= attempt[index] * row[free_vars[index]]
                 index += 1
-            else:
-                if row[col] < 0:
-                    seen_neg = True
-                elif row[col] > 0:
-                    seen_pos = True
+            elif row[col] < 0:
+                seen_neg = True
 
             col += 1
 
         coef = row[free_vars[depth]]
 
-        if seen_neg and seen_pos:
-            # No constraints can be applied
-            # print("both +ve and -ve coeffs found")
-            pass
-        elif coef != 0:
+        if not seen_neg and coef != 0:
             high = min((high, target / coef))
-            # print(f"something can be done: b_{free_vars[depth]} < {high}")
 
     best = None
-
-    # print(f"END RESULT: b_{free_vars[depth]} < {high}")
 
     for free_var_val in range(0, int(high + 1)):
         attempt.append(free_var_val)
@@ -221,14 +163,11 @@ def gen_matrix(buttons, joltage):
     return mat
 
 
-def full_solve(buttons, joltage, hacky_offset=0):
+def full_solve(buttons, joltage):
     matrix = gen_matrix(buttons, joltage)
     rref_mat = rref(matrix)
     free_vars = find_free_variables(rref_mat)
-    # free_max = free_variables_max_values(rref_mat, free_vars, hacky_offset)
-
-    # return solve_recursive(rref_mat, free_vars, free_max)
-    return solve_recursive(rref_mat, free_vars, [])
+    return solve_recursive(rref_mat, free_vars)
 
 
 def parse_line(line):
@@ -308,15 +247,7 @@ def main():
     free_vars = find_free_variables(res)
     print(free_vars)
 
-    free_max = free_variables_max_values(res, free_vars)
-
-    # print(solve_with_attempt(res, free_vars, [3, 2]))
-
     print()
-
-    # solved = solve(res, free_vars, free_max)
-    # print(solved)
-    # print()
 
     solved = solve_recursive(res, free_vars)
     print(solved)
