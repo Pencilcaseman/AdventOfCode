@@ -71,7 +71,7 @@ def find_free_variables(rref_mat):
     return free
 
 
-def free_variables_max_values(rref_mat, free_vars, hacky_offset=0):
+def free_variables_max_values(rref_mat, free_vars):
     max_vals = [2048 for _ in range(len(free_vars))]
 
     for row in rref_mat:
@@ -81,8 +81,8 @@ def free_variables_max_values(rref_mat, free_vars, hacky_offset=0):
             if row[free] > 0 and target > 0:
                 # if all(x > 0 for x in row):
                 max_val = target // row[free]
-                if max_val < max_vals[idx] + hacky_offset:
-                    max_vals[idx] = max_val + hacky_offset
+                if max_val < max_vals[idx]:
+                    max_vals[idx] = max_val
 
     return max_vals
 
@@ -105,6 +105,9 @@ def solve_with_attempt(rref_mat, free_vars, attempt):
         num = rref_mat[row][-1]
         for b_idx in range(len(free_vars)):
             num -= attempt[b_idx] * rref_mat[row][free_vars[b_idx]]
+
+            # if num < 0:
+            #     return None
 
         solved[col] = num
 
@@ -141,14 +144,65 @@ def solve(rref_mat, free_vars, free_max):
             attempt[idx] += 1
 
 
-def solve_recursive(rref_mat, free_vars, attempt):
-    if len(free_vars) == 0:
-        return solve_with_attempt(rref_mat, [], [])
+def solve_recursive(rref_mat, free_vars, attempt=None, depth=0):
+    if attempt is None:
+        attempt = []
 
-    low = 99999
-    max = 0
+    if depth == len(free_vars):
+        return solve_with_attempt(rref_mat, free_vars, attempt)
 
-    pass
+    # Find lower and upper bounds for free variable b_depth given the current
+    # variable assignment.
+
+    num_vars = len(rref_mat[0]) - 1
+
+    high = 2048
+
+    for row in rref_mat:
+        target = row[-1]
+
+        # Undecided coefficients with opposite signs => no limit
+        seen_neg = False
+        seen_pos = False
+
+        index = 0
+        col = 0
+        while col < num_vars:
+            if index < len(attempt) and col == free_vars[index]:
+                target -= attempt[index] * row[free_vars[index]]
+                index += 1
+            else:
+                if row[col] < 0:
+                    seen_neg = True
+                elif row[col] > 0:
+                    seen_pos = True
+
+            col += 1
+
+        coef = row[free_vars[depth]]
+
+        if seen_neg and seen_pos:
+            # No constraints can be applied
+            # print("both +ve and -ve coeffs found")
+            pass
+        elif coef != 0:
+            high = min((high, target / coef))
+            # print(f"something can be done: b_{free_vars[depth]} < {high}")
+
+    best = None
+
+    # print(f"END RESULT: b_{free_vars[depth]} < {high}")
+
+    for free_var_val in range(0, int(high + 1)):
+        attempt.append(free_var_val)
+        solved = solve_recursive(rref_mat, free_vars, attempt, depth + 1)
+        attempt.pop()
+
+        if solved is not None and all(x >= 0 for x in solved):
+            if best is None or sum(solved) < sum(best):
+                best = solved
+
+    return best
 
 
 def gen_matrix(buttons, joltage):
@@ -217,25 +271,24 @@ def main():
     # buttons = [(0, 2, 3, 4), (2, 3), (0, 4), (0, 1, 2), (1, 2, 3, 4)]
     # joltage = [7, 5, 12, 7, 2]
 
-    buttons = [(0, 1, 2, 3, 4), (0, 3, 4), (0, 1, 2, 4, 5), (1, 2)]
-    joltage = [10, 11, 11, 5, 10, 5]
+    # buttons = [(0, 1, 2, 3, 4), (0, 3, 4), (0, 1, 2, 4, 5), (1, 2)]
+    # joltage = [10, 11, 11, 5, 10, 5]
 
-    # buttons = [
-    #     (3, 6),
-    #     (0, 1, 2, 3, 4, 5, 7, 9),
-    #     (0, 1, 5, 6, 7, 8, 9),
-    #     (1, 9),
-    #     (0, 1, 3, 4, 5, 6, 7),
-    #     (0, 1, 2, 3, 4, 5),
-    #     (1, 2, 3, 4, 5, 6, 7, 8),
-    #     (2, 3, 5, 7, 8),
-    #     (2, 3, 5, 7, 9),
-    #     (0, 1, 2, 3, 4, 6, 9),
-    #     (4, 5, 6, 7, 8),
-    #     (3, 6, 7, 8, 9),
-    # ]
-    #
-    # joltage = [52, 67, 66, 109, 49, 65, 70, 66, 33, 72]
+    buttons = [
+        (3, 6),
+        (0, 1, 2, 3, 4, 5, 7, 9),
+        (0, 1, 5, 6, 7, 8, 9),
+        (1, 9),
+        (0, 1, 3, 4, 5, 6, 7),
+        (0, 1, 2, 3, 4, 5),
+        (1, 2, 3, 4, 5, 6, 7, 8),
+        (2, 3, 5, 7, 8),
+        (2, 3, 5, 7, 9),
+        (0, 1, 2, 3, 4, 6, 9),
+        (4, 5, 6, 7, 8),
+        (3, 6, 7, 8, 9),
+    ]
+    joltage = [52, 67, 66, 109, 49, 65, 70, 66, 33, 72]
 
     start = time.perf_counter_ns()
     matrix = gen_matrix(buttons, joltage)
@@ -261,14 +314,20 @@ def main():
 
     print()
 
-    solved = solve(res, free_vars, free_max)
+    # solved = solve(res, free_vars, free_max)
+    # print(solved)
+    # print()
+
+    solved = solve_recursive(res, free_vars)
     print(solved)
-    print(sum(solved))
+    print()
 
     test = """[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}
 [...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}
 [.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}"""
     print(part2(test.strip()))
+
+    print()
 
     with open("../../input/year2025/day10.txt", "r") as f:
         print(part2(f.read().strip()))
