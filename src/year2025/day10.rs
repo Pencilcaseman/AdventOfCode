@@ -5,46 +5,63 @@ use crate::util::parse::ParseUnsigned;
 
 type Input = Vec<MachineConfig>;
 
+const MAX_VAR_VAL: i32 = 2048;
+
 pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
 }
 
+// pub fn part1(input: &Input) -> u32 {
+//     input
+//         .par_iter()
+//         .map(|machine_config| {
+//             let num_buttons = machine_config.buttons.len();
+//
+//             let mut best = u32::MAX;
+//
+//             for presses in 0u32..(1 << num_buttons) {
+//                 let mut config = 0;
+//
+//                 for bit in 0..num_buttons {
+//                     if (presses & (1 << bit)) != 0 {
+//                         config ^= machine_config.buttons[bit];
+//                     }
+//                 }
+//
+//                 if config == machine_config.target
+//                     && presses.count_ones() < best.count_ones()
+//                 {
+//                     best = presses;
+//                 }
+//             }
+//
+//             best.count_ones()
+//         })
+//         .sum()
+// }
+
 pub fn part1(input: &Input) -> u32 {
+    0
+}
+
+pub fn part2(input: &Input) -> i32 {
     input
-        .par_iter()
+        .iter()
         .map(|machine_config| {
-            let num_buttons = machine_config.buttons.len();
-
-            let mut best = u32::MAX;
-
-            for presses in 0u32..(1 << num_buttons) {
-                let mut config = 0;
-
-                for bit in 0..num_buttons {
-                    if (presses & (1 << bit)) != 0 {
-                        config ^= machine_config.buttons[bit];
-                    }
-                }
-
-                if config == machine_config.target
-                    && presses.count_ones() < best.count_ones()
-                {
-                    best = presses;
-                }
+            if let Some(res) =
+                full_solve(&machine_config.buttons, &machine_config.joltage)
+            {
+                res.iter().copied().map(Fraction::to_int).sum::<i32>()
+            } else {
+                panic!("Failed to solve config")
             }
-
-            best.count_ones()
         })
         .sum()
 }
 
-pub fn part2(input: &Input) -> u32 {
-    0
-}
-
 pub struct MachineConfig {
     target: u32,
-    buttons: Vec<u32>,
+    buttons: Vec<Vec<u32>>,
     joltage: Vec<u32>,
 }
 
@@ -52,7 +69,7 @@ impl std::fmt::Debug for MachineConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "MachineConfig {{ target: {:b}, buttons: (", self.target)?;
         for b in &self.buttons {
-            write!(f, "{b:b} ")?;
+            write!(f, "{b:?} ")?;
         }
         write!(f, "), joltage: {:?} }}", self.joltage)
     }
@@ -87,11 +104,13 @@ impl MachineConfig {
         {
             // Take digits until ')' is found
             // Toggle options are always 0 <= b <= 9
-            let mut button = 0;
+            // let mut button = 0;
+            let mut button = Vec::new();
             while let Some(b) = iter.next()
                 && b != b' '
             {
-                button |= 1 << (b - b'0');
+                // button |= 1 << (b - b'0');
+                button.push((b - b'0') as u32);
 
                 // Take comma or space
                 let _ = iter.next()?;
@@ -202,7 +221,7 @@ fn solve_with_attempt(
     let mut col = 0;
 
     for row in 0..rows {
-        while free_vars.contains(&row) {
+        while free_vars.contains(&col) {
             col += 1;
         }
 
@@ -270,14 +289,71 @@ fn solve_recursive(
         }
     }
 
+    let mut best = i32::MAX;
+    let mut best_res = Vec::new();
+
     for free_var_val in 0..high.to_int() + 1 {
         attempt.push(free_var_val);
-        let solved =
-            solve_recursive(rref_mat, max_vals, free_vars, attempt, depth + 1);
+
+        if let Some(solved) =
+            solve_recursive(rref_mat, max_vals, free_vars, attempt, depth + 1)
+            && solved.iter().all(|x| x >= &Fraction::from_int(0) && x.is_int())
+        {
+            let sum = solved
+                .iter()
+                .fold(Fraction::from_int(0), |total, val| total + *val);
+            if sum.to_int() < best {
+                best_res = solved;
+                best = sum.to_int();
+            }
+        }
+
         attempt.pop();
     }
 
-    todo!()
+    if best == i32::MAX { None } else { Some(best_res) }
+}
+
+fn gen_matrix(
+    buttons: &[Vec<u32>],
+    joltage: &[u32],
+) -> (Vec<Vec<Fraction>>, Vec<i32>) {
+    let rows = joltage.len();
+    let cols = buttons.len();
+
+    let mut mat = vec![vec![Fraction::from_int(0); cols + 1]; rows];
+
+    for col in 0..cols {
+        for switch in &buttons[col] {
+            mat[*switch as usize][col] = Fraction::from_int(1);
+        }
+    }
+
+    for i in 0..rows {
+        mat[i][cols] = Fraction::from_int(joltage[i] as i32);
+    }
+
+    let mut max_vals = vec![MAX_VAR_VAL; cols];
+
+    for row in &mat {
+        for i in 0..cols {
+            if row[i] != Fraction::from_int(0)
+                && row[cols].to_int() < max_vals[i]
+            {
+                max_vals[i] = row[cols].to_int();
+            }
+        }
+    }
+
+    (mat, max_vals)
+}
+
+fn full_solve(buttons: &[Vec<u32>], joltage: &[u32]) -> Option<Vec<Fraction>> {
+    let (mut matrix, max_vals) = gen_matrix(buttons, joltage);
+    rref(&mut matrix);
+    let free_vars = find_free_variables(&matrix);
+    let mut attempt = Vec::new();
+    solve_recursive(&matrix, &max_vals, &free_vars, &mut attempt, 0)
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -306,7 +382,7 @@ impl Fraction {
         Self::new(int, 1)
     }
 
-    fn to_int(&self) -> i32 {
+    fn to_int(self) -> i32 {
         self.num / self.den
     }
 
