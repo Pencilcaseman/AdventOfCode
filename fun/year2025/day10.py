@@ -1,11 +1,91 @@
 # pyright: standard
 
+from decimal import DivisionByZero
 import math
 import time
 
-from multiprocessing import Pool
 
-from fractions import Fraction
+class Fraction:
+    def __init__(self, num, den=1):
+        assert isinstance(den, int)
+
+        if isinstance(num, Fraction):
+            self.num = num.num
+            self.den = num.den
+        else:
+            self.num = num
+            self.den = den
+
+        if self.den < 0:
+            self.num = -self.num
+            self.den = -self.den
+
+        gcd = math.gcd(self.num, self.den)
+        self.num //= gcd
+        self.den //= gcd
+
+    def __repr__(self):
+        return f"({self.num} / {self.den})"
+
+    def __int__(self):
+        return self.num // self.den
+
+    def __float__(self):
+        return self.num / self.den
+
+    def reciprocal(self):
+        if self.num == 0:
+            raise DivisionByZero
+
+        return Fraction(self.den, self.num)
+
+    def is_integer(self):
+        return self.num % self.den == 0
+
+    def __neg__(self):
+        return Fraction(-self.num, self.den)
+
+    def __add__(self, other):
+        o = Fraction(other)
+
+        num = self.num * o.den + o.num * self.den
+        den = self.den * o.den
+
+        return Fraction(num, den)
+
+    def __iadd__(self, other):
+        return self + other
+
+    def __radd__(self, other):
+        return self + other
+
+    def __mul__(self, other):
+        o = Fraction(other)
+
+        return Fraction(self.num * o.num, self.den * o.den)
+
+    def __imul__(self, other):
+        return self * other
+
+    def __truediv__(self, other):
+        o = Fraction(other)
+        return self * o.reciprocal()
+
+    def __eq__(self, other):
+        o = Fraction(other)
+        return self.num * o.den == o.num * self.den
+
+    def __ne__(self, other):
+        o = Fraction(other)
+        return self.num * o.den != o.num * self.den
+
+    def __lt__(self, other):
+        o = Fraction(other)
+        return self.num * o.den < o.num * self.den
+
+    def __ge__(self, other):
+        o = Fraction(other)
+        return self.num * o.den >= o.num * self.den
 
 
 def swap_rows(mat, src, dst):
@@ -24,7 +104,7 @@ def add_and_scale_row(mat, src, dst, alpha):
 
 def rref(mat):
     rows = len(mat)
-    cols = len(mat[0])
+    cols = len(mat[0]) - 1
 
     pivot_row = 0
 
@@ -34,7 +114,7 @@ def rref(mat):
 
         pivot_candidate = -1
         for r in range(pivot_row, rows):
-            if abs(mat[r][col]) > 1e-7:
+            if mat[r][col] != Fraction(0):
                 pivot_candidate = r
                 break
 
@@ -44,7 +124,8 @@ def rref(mat):
         swap_rows(mat, pivot_row, pivot_candidate)
 
         pivot_val = mat[pivot_row][col]
-        scale_row(mat, pivot_row, 1 / pivot_val)
+        # scale_row(mat, pivot_row, 1 / pivot_val)
+        scale_row(mat, pivot_row, pivot_val.reciprocal())
 
         for r in range(rows):
             if r != pivot_row:
@@ -64,7 +145,7 @@ def find_free_variables(rref_mat):
     col = 0
 
     for row in range(rows):
-        while col < cols - 1 and rref_mat[row][col] == 0:
+        while col < cols - 1 and rref_mat[row][col] == Fraction(0):
             free.append(col)
             col += 1
         col += 1
@@ -78,10 +159,10 @@ def find_free_variables(rref_mat):
 
 def solve_with_attempt(rref_mat, free_vars, attempt):
     vars = len(rref_mat[0]) - 1
-    solved = [0 for _ in range(vars)]
+    solved = [Fraction(0) for _ in range(vars)]
 
     for i, x in enumerate(free_vars):
-        solved[x] = attempt[i]
+        solved[x] = Fraction(attempt[i])
 
     col = 0
     for row in range(len(rref_mat)):
@@ -93,7 +174,7 @@ def solve_with_attempt(rref_mat, free_vars, attempt):
 
         num = rref_mat[row][-1]
         for b_idx in range(len(free_vars)):
-            num -= attempt[b_idx] * rref_mat[row][free_vars[b_idx]]
+            num += Fraction(-attempt[b_idx]) * rref_mat[row][free_vars[b_idx]]
 
         solved[col] = num
 
@@ -126,29 +207,27 @@ def solve_recursive(rref_mat, max_vals, free_vars, attempt=None, depth=0):
         col = 0
         while col < num_vars:
             if index < len(attempt) and col == free_vars[index]:
-                target -= attempt[index] * row[free_vars[index]]
+                target += Fraction(-attempt[index]) * row[free_vars[index]]
                 index += 1
-            elif row[col] < 0:
+            elif row[col] < Fraction(0):
                 seen_neg = True
 
             col += 1
 
         coef = row[free_vars[depth]]
 
-        if not seen_neg and coef != 0:
+        if not seen_neg and coef != Fraction(0):
             high = min((high, target / coef))
 
     best = None
 
-    for free_var_val in range(0, int(high + 1)):
+    for free_var_val in range(0, int(high) + 1):
         attempt.append(free_var_val)
         solved = solve_recursive(rref_mat, max_vals, free_vars, attempt, depth + 1)
         attempt.pop()
 
         if solved is not None and all(
-            x >= 0 and (x.numerator % x.denominator == 0)
-            for x in solved
-            for x in solved
+            x >= Fraction(0) and x.is_integer() for x in solved
         ):
             if best is None or sum(solved) < sum(best):
                 best = solved
@@ -160,20 +239,20 @@ def gen_matrix(buttons, joltage):
     rows = len(joltage)
     cols = len(buttons)
 
-    mat = [[0 for _ in range(cols + 1)] for _ in range(rows)]
+    mat = [[Fraction(0) for _ in range(cols + 1)] for _ in range(rows)]
 
     for col in range(cols):
         for switch in buttons[col]:
             mat[switch][col] = Fraction(1)
 
     for i in range(rows):
-        mat[i][cols] = joltage[i]
+        mat[i][cols] = Fraction(joltage[i])
 
-    max_vals = [2048 for _ in range(cols)]
+    max_vals = [Fraction(2048) for _ in range(cols)]
 
     for row in mat:
         for i in range(len(row) - 1):
-            if row[i] != 0 and row[-1] < max_vals[i]:
+            if row[i] != Fraction(0) and row[-1] < max_vals[i]:
                 max_vals[i] = row[-1]
 
     return mat, max_vals
@@ -203,7 +282,7 @@ def parse_line(line):
 
 
 def part2(txt):
-    res = 0
+    res = Fraction(0)
 
     for line in txt.split("\n"):
         buttons, joltage = parse_line(line)
