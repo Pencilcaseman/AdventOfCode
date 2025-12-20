@@ -2,6 +2,8 @@
 
 import time
 
+from fractions import Fraction
+
 
 def swap_rows(mat, src, dst):
     mat[src], mat[dst] = mat[dst], mat[src]
@@ -97,7 +99,7 @@ def solve_with_attempt(rref_mat, free_vars, attempt):
     return solved
 
 
-def solve_recursive(rref_mat, free_vars, attempt=None, depth=0):
+def solve_recursive(rref_mat, max_vals, free_vars, attempt=None, depth=0):
     if attempt is None:
         attempt = []
 
@@ -109,7 +111,7 @@ def solve_recursive(rref_mat, free_vars, attempt=None, depth=0):
 
     num_vars = len(rref_mat[0]) - 1
 
-    high = 2048
+    high = max_vals[free_vars[depth]]
 
     for row in rref_mat:
         target = row[-1]
@@ -137,10 +139,12 @@ def solve_recursive(rref_mat, free_vars, attempt=None, depth=0):
 
     for free_var_val in range(0, int(high + 1)):
         attempt.append(free_var_val)
-        solved = solve_recursive(rref_mat, free_vars, attempt, depth + 1)
+        solved = solve_recursive(rref_mat, max_vals, free_vars, attempt, depth + 1)
         attempt.pop()
 
-        if solved is not None and all(x >= 0 for x in solved):
+        if solved is not None and all(
+            x >= 0 and (x.numerator % x.denominator == 0) for x in solved
+        ):
             if best is None or sum(solved) < sum(best):
                 best = solved
 
@@ -155,19 +159,26 @@ def gen_matrix(buttons, joltage):
 
     for col in range(cols):
         for switch in buttons[col]:
-            mat[switch][col] = 1
+            mat[switch][col] = Fraction(1)
 
     for i in range(rows):
         mat[i][cols] = joltage[i]
 
-    return mat
+    max_vals = [2048 for _ in range(cols)]
+
+    for row in mat:
+        for i in range(len(row) - 1):
+            if row[i] != 0 and row[-1] < max_vals[i]:
+                max_vals[i] = row[-1]
+
+    return mat, max_vals
 
 
 def full_solve(buttons, joltage):
-    matrix = gen_matrix(buttons, joltage)
+    matrix, max_vals = gen_matrix(buttons, joltage)
     rref_mat = rref(matrix)
     free_vars = find_free_variables(rref_mat)
-    return solve_recursive(rref_mat, free_vars)
+    return solve_recursive(rref_mat, max_vals, free_vars)
 
 
 def parse_line(line):
@@ -191,14 +202,11 @@ def part2(txt):
 
     for line in txt.split("\n"):
         buttons, joltage = parse_line(line)
-
         partial = full_solve(buttons, joltage)
-
-        if partial is not None:
-            print(partial)
-            res += sum(partial)
-        else:
-            print("UNSOLVED INPUT. ANSWER WILL BE INCORRECT")
+        if partial is None:
+            return None
+        print(list(map(int, partial)))
+        res += sum(partial)
 
     return res
 
@@ -230,11 +238,11 @@ def main():
     joltage = [52, 67, 66, 109, 49, 65, 70, 66, 33, 72]
 
     start = time.perf_counter_ns()
-    matrix = gen_matrix(buttons, joltage)
+    matrix, max_vals = gen_matrix(buttons, joltage)
     end = time.perf_counter_ns()
     print(f"Matrix Creation: {end - start}ns")
 
-    print("\n".join(map(str, matrix)))
+    print("\n".join(map(str, map_mat(matrix, int))))
     print()
 
     start = time.perf_counter_ns()
@@ -242,14 +250,14 @@ def main():
     end = time.perf_counter_ns()
     print(f"RREF: {end - start}ns")
 
-    print("\n".join(map(str, res)))
+    print("\n".join(map(str, map_mat(res, int))))
 
     free_vars = find_free_variables(res)
     print(free_vars)
 
     print()
 
-    solved = solve_recursive(res, free_vars)
+    solved = solve_recursive(res, max_vals, free_vars)
     print(solved)
     print()
 
@@ -262,6 +270,19 @@ def main():
 
     with open("../../input/year2025/day10.txt", "r") as f:
         print(part2(f.read().strip()))
+
+
+def map_mat(mat, fn):
+    rows = len(mat)
+    cols = len(mat[0])
+
+    res = [[0 for _ in range(cols)] for _ in range(rows)]
+
+    for i in range(rows):
+        for j in range(cols):
+            res[i][j] = fn(mat[i][j])
+
+    return res
 
 
 if __name__ == "__main__":
