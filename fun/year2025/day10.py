@@ -29,7 +29,7 @@ def rref(mat):
 
         pivot_candidate = -1
         for r in range(pivot_row, rows):
-            if abs(mat[r][col]) > 1e-10:
+            if abs(mat[r][col]) > 1e-12:
                 pivot_candidate = r
                 break
 
@@ -39,7 +39,7 @@ def rref(mat):
         swap_rows(mat, pivot_row, pivot_candidate)
 
         pivot_val = mat[pivot_row][col]
-        scale_row(mat, pivot_row, 1.0 / pivot_val)
+        scale_row(mat, pivot_row, 1 / pivot_val)
 
         for r in range(rows):
             if r != pivot_row:
@@ -47,10 +47,6 @@ def rref(mat):
                 add_and_scale_row(mat, pivot_row, r, -factor)
 
         pivot_row += 1
-
-    # for r in range(rows):
-    #     for c in range(cols):
-    #         mat[r][c] = int(round(mat[r][c]))
 
     return mat
 
@@ -75,7 +71,7 @@ def find_free_variables(rref_mat):
     return free
 
 
-def free_variables_max_values(rref_mat, free_vars):
+def free_variables_max_values(rref_mat, free_vars, hacky_offset=0):
     max_vals = [2048 for _ in range(len(free_vars))]
 
     for row in rref_mat:
@@ -84,9 +80,9 @@ def free_variables_max_values(rref_mat, free_vars):
         for idx, free in enumerate(free_vars):
             if row[free] > 0 and target > 0:
                 # if all(x > 0 for x in row):
-                max_val = target / row[free]
-                if max_val < max_vals[idx]:
-                    max_vals[idx] = max_val
+                max_val = target // row[free]
+                if max_val < max_vals[idx] + hacky_offset:
+                    max_vals[idx] = max_val + hacky_offset
 
     return max_vals
 
@@ -145,6 +141,16 @@ def solve(rref_mat, free_vars, free_max):
             attempt[idx] += 1
 
 
+def solve_recursive(rref_mat, free_vars, attempt):
+    if len(free_vars) == 0:
+        return solve_with_attempt(rref_mat, [], [])
+
+    low = 99999
+    max = 0
+
+    pass
+
+
 def gen_matrix(buttons, joltage):
     rows = len(joltage)
     cols = len(buttons)
@@ -161,13 +167,14 @@ def gen_matrix(buttons, joltage):
     return mat
 
 
-def full_solve(buttons, joltage):
+def full_solve(buttons, joltage, hacky_offset=0):
     matrix = gen_matrix(buttons, joltage)
     rref_mat = rref(matrix)
     free_vars = find_free_variables(rref_mat)
-    free_max = free_variables_max_values(rref_mat, free_vars)
+    # free_max = free_variables_max_values(rref_mat, free_vars, hacky_offset)
 
-    return solve(rref_mat, free_vars, free_max)
+    # return solve_recursive(rref_mat, free_vars, free_max)
+    return solve_recursive(rref_mat, free_vars, [])
 
 
 def parse_line(line):
@@ -191,11 +198,14 @@ def part2(txt):
 
     for line in txt.split("\n"):
         buttons, joltage = parse_line(line)
+
         partial = full_solve(buttons, joltage)
 
-        print(partial)
-
-        res += sum(partial)
+        if partial is not None:
+            print(partial)
+            res += sum(partial)
+        else:
+            print("UNSOLVED INPUT. ANSWER WILL BE INCORRECT")
 
     return res
 
@@ -260,8 +270,8 @@ def main():
 [.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}"""
     print(part2(test.strip()))
 
-    # with open("../../input/year2025/day10.txt", "r") as f:
-    #     print(part2(f.read().strip()))
+    with open("../../input/year2025/day10.txt", "r") as f:
+        print(part2(f.read().strip()))
 
 
 if __name__ == "__main__":
