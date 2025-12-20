@@ -1,6 +1,9 @@
 # pyright: standard
 
+import math
 import time
+
+from multiprocessing import Pool
 
 from fractions import Fraction
 
@@ -31,7 +34,7 @@ def rref(mat):
 
         pivot_candidate = -1
         for r in range(pivot_row, rows):
-            if abs(mat[r][col]) > 1e-12:
+            if abs(mat[r][col]) > 1e-7:
                 pivot_candidate = r
                 break
 
@@ -143,7 +146,9 @@ def solve_recursive(rref_mat, max_vals, free_vars, attempt=None, depth=0):
         attempt.pop()
 
         if solved is not None and all(
-            x >= 0 and (x.numerator % x.denominator == 0) for x in solved
+            x >= 0 and (x.numerator % x.denominator == 0)
+            for x in solved
+            for x in solved
         ):
             if best is None or sum(solved) < sum(best):
                 best = solved
@@ -205,7 +210,6 @@ def part2(txt):
         partial = full_solve(buttons, joltage)
         if partial is None:
             return None
-        print(list(map(int, partial)))
         res += sum(partial)
 
     return res
