@@ -1,3 +1,5 @@
+use rayon::prelude::*;
+
 use crate::util::parse::ParseUnsigned;
 
 type Input = Vec<MachineConfig>;
@@ -8,7 +10,7 @@ pub fn parse(input: &str) -> Input {
 
 pub fn part1(input: &Input) -> u32 {
     input
-        .iter()
+        .par_iter()
         .map(|machine_config| {
             let num_buttons = machine_config.buttons.len();
 
