@@ -109,7 +109,6 @@ impl MachineConfig {
             while let Some(b) = iter.next()
                 && b != b' '
             {
-                // button |= 1 << (b - b'0');
                 button.push((b - b'0') as u32);
 
                 // Take comma or space
@@ -125,7 +124,7 @@ impl MachineConfig {
     }
 }
 
-fn swap_rows(mat: &mut Vec<Vec<Fraction>>, i: usize, j: usize) {
+fn swap_rows(mat: &mut [Vec<Fraction>], i: usize, j: usize) {
     mat.swap(i, j);
 }
 
@@ -144,7 +143,7 @@ fn add_scale_row(
     });
 }
 
-fn rref(mat: &mut Vec<Vec<Fraction>>) {
+fn rref(mat: &mut [Vec<Fraction>]) {
     let rows = mat.len();
     let cols = mat[0].len() - 1;
 
@@ -155,18 +154,11 @@ fn rref(mat: &mut Vec<Vec<Fraction>>) {
             break;
         }
 
-        let mut pivot_candidate = usize::MAX;
-
-        for r in pivot_row..rows {
-            if mat[r][col] != Fraction::from_int(0) {
-                pivot_candidate = r;
-                break;
-            }
-        }
-
-        if pivot_candidate == usize::MAX {
+        let Some(pivot_candidate) =
+            (pivot_row..rows).find(|&r| mat[r][col] != Fraction::from_int(0))
+        else {
             continue;
-        }
+        };
 
         swap_rows(mat, pivot_row, pivot_candidate);
 
@@ -185,14 +177,13 @@ fn rref(mat: &mut Vec<Vec<Fraction>>) {
 }
 
 fn find_free_variables(rref_mat: &[Vec<Fraction>]) -> Vec<usize> {
-    let rows = rref_mat.len();
     let cols = rref_mat[0].len() - 1;
 
     let mut free = Vec::new();
     let mut col = 0;
 
-    for row in 0..rows {
-        while col < cols && rref_mat[row][col] == Fraction::from_int(0) {
+    for row in rref_mat {
+        while col < cols && row[col] == Fraction::from_int(0) {
             free.push(col);
             col += 1
         }
@@ -210,7 +201,6 @@ fn solve_with_attempt(
     free_vars: &[usize],
     attempt: &[i32],
 ) -> Vec<Fraction> {
-    let rows = rref_mat.len();
     let vars = rref_mat[0].len() - 1;
     let mut solved = vec![Fraction::from_int(0); vars];
 
@@ -220,7 +210,7 @@ fn solve_with_attempt(
 
     let mut col = 0;
 
-    for row in 0..rows {
+    for row in rref_mat {
         while free_vars.contains(&col) {
             col += 1;
         }
@@ -229,11 +219,11 @@ fn solve_with_attempt(
             break;
         }
 
-        let mut target = rref_mat[row][vars];
+        let mut target = row[vars];
 
         for b_idx in 0..free_vars.len() {
-            target -= Fraction::from_int(attempt[b_idx])
-                * rref_mat[row][free_vars[b_idx]];
+            target -=
+                Fraction::from_int(attempt[b_idx]) * row[free_vars[b_idx]];
         }
 
         solved[col] = target;
