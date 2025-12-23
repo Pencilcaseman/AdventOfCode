@@ -1,9 +1,10 @@
 use num::Integer;
 use rayon::prelude::*;
 
-use crate::util::parse::ParseUnsigned;
+use crate::util::parse::{ParseSigned, ParseUnsigned};
 
 type Input = Vec<MachineConfig>;
+type ParseInt = u16;
 
 const MAX_VAR_VAL: i32 = 2048;
 
@@ -46,7 +47,7 @@ pub fn part1(input: &Input) -> u32 {
 
 pub fn part2(input: &Input) -> i32 {
     input
-        .iter()
+        .par_iter()
         .map(|machine_config| {
             if let Some(res) =
                 full_solve(&machine_config.buttons, &machine_config.joltage)
@@ -59,10 +60,11 @@ pub fn part2(input: &Input) -> i32 {
         .sum()
 }
 
+#[derive(Clone)]
 pub struct MachineConfig {
     target: u32,
-    buttons: Vec<Vec<u32>>,
-    joltage: Vec<u32>,
+    buttons: Vec<Vec<ParseInt>>,
+    joltage: Vec<ParseInt>,
 }
 
 impl std::fmt::Debug for MachineConfig {
@@ -77,50 +79,25 @@ impl std::fmt::Debug for MachineConfig {
 
 impl MachineConfig {
     fn new(conf: &str) -> Option<MachineConfig> {
-        let mut iter = conf.bytes();
+        let mut segments = conf.split(' ').map(|s| s.bytes());
 
-        // Take first [
-        let _ = iter.next()?;
-
-        // Extract target toggle states
-        let mut target = 0;
-        let mut target_iter = iter.by_ref().enumerate();
-        while let Some((i, b)) = target_iter.next()
-            && b != b']'
-        {
+        // Parse the toggle states
+        let mut toggle_target = 0;
+        let toggle_bytes = segments.next()?;
+        for b in toggle_bytes {
             if b == b'#' {
-                target |= 1 << i;
+                toggle_target |= 1;
             }
+            toggle_target <<= 1;
         }
 
-        // Take space
-        let _ = iter.next()?;
+        let mut number_segs: Vec<Vec<ParseInt>> = segments
+            .map(|b| ParseUnsigned::<ParseInt>::new(b).collect())
+            .collect();
 
-        // Extract button toggle options
-        let mut buttons = Vec::new();
+        let joltage = number_segs.pop()?;
 
-        while let Some(b) = iter.next()
-            && b == b'('
-        {
-            // Take digits until ')' is found
-            // Toggle options are always 0 <= b <= 9
-            // let mut button = 0;
-            let mut button = Vec::new();
-            while let Some(b) = iter.next()
-                && b != b' '
-            {
-                button.push((b - b'0') as u32);
-
-                // Take comma or space
-                let _ = iter.next()?;
-            }
-
-            buttons.push(button);
-        }
-
-        let joltage: Vec<_> = ParseUnsigned::<u32>::new(iter).collect();
-
-        Some(Self { target, buttons, joltage })
+        Some(Self { target: toggle_target, buttons: number_segs, joltage })
     }
 }
 
@@ -155,7 +132,7 @@ fn rref(mat: &mut [Vec<Fraction>]) {
         }
 
         let Some(pivot_candidate) =
-            (pivot_row..rows).find(|&r| mat[r][col] != Fraction::from_int(0))
+            (pivot_row..rows).find(|&r| !mat[r][col].is_zero())
         else {
             continue;
         };
@@ -183,7 +160,7 @@ fn find_free_variables(rref_mat: &[Vec<Fraction>]) -> Vec<usize> {
     let mut col = 0;
 
     for row in rref_mat {
-        while col < cols && row[col] == Fraction::from_int(0) {
+        while col < cols && row[col].is_zero() {
             free.push(col);
             col += 1
         }
@@ -200,19 +177,29 @@ fn solve_with_attempt(
     rref_mat: &[Vec<Fraction>],
     free_vars: &[usize],
     attempt: &[i32],
-) -> Vec<Fraction> {
+    best: i32,
+) -> Option<Vec<Fraction>> {
     let vars = rref_mat[0].len() - 1;
     let mut solved = vec![Fraction::from_int(0); vars];
 
+    let mut running_total = 0;
+
     for (i, x) in free_vars.iter().enumerate() {
         solved[*x] = Fraction::from_int(attempt[i]);
+        running_total += attempt[i];
     }
 
     let mut col = 0;
+    let mut free_idx = 0;
 
     for row in rref_mat {
-        while free_vars.contains(&col) {
+        if running_total > best {
+            return None;
+        }
+
+        while free_idx < free_vars.len() && col == free_vars[free_idx] {
             col += 1;
+            free_idx += 1;
         }
 
         if col >= vars {
@@ -226,11 +213,16 @@ fn solve_with_attempt(
                 Fraction::from_int(attempt[b_idx]) * row[free_vars[b_idx]];
         }
 
+        if target.is_negative() {
+            return None;
+        }
+
         solved[col] = target;
+        running_total += target.to_int();
         col += 1;
     }
 
-    solved
+    Some(solved)
 }
 
 fn solve_recursive(
@@ -239,9 +231,10 @@ fn solve_recursive(
     free_vars: &[usize],
     attempt: &mut Vec<i32>,
     depth: usize,
+    mut best: i32,
 ) -> Option<Vec<Fraction>> {
     if depth == free_vars.len() {
-        return Some(solve_with_attempt(rref_mat, free_vars, attempt));
+        return solve_with_attempt(rref_mat, free_vars, attempt, best);
     }
 
     // Find lower and upper bounds for free variable b_depth given the current
@@ -249,7 +242,7 @@ fn solve_recursive(
 
     let num_vars = rref_mat[0].len() - 1;
 
-    let mut high = Fraction::from_int(max_vals[free_vars[depth]]);
+    let mut high = Fraction::from_int(max_vals[free_vars[depth]].min(best));
 
     for row in rref_mat {
         let mut target = row[num_vars];
@@ -265,7 +258,7 @@ fn solve_recursive(
                 target -=
                     Fraction::from_int(attempt[index]) * row[free_vars[index]];
                 index += 1;
-            } else if row[col] < Fraction::from_int(0) {
+            } else if row[col].is_negative() {
                 seen_neg = true;
                 break;
             }
@@ -274,20 +267,24 @@ fn solve_recursive(
         }
 
         let coef = row[free_vars[depth]];
-        if !seen_neg && coef != Fraction::from_int(0) {
+        if !seen_neg && !coef.is_zero() {
             high = high.min(target / coef)
         }
     }
 
-    let mut best = i32::MAX;
     let mut best_res = Vec::new();
 
-    for free_var_val in 0..high.to_int() + 1 {
+    for free_var_val in 0..(high.to_int() + 1) {
         attempt.push(free_var_val);
 
-        if let Some(solved) =
-            solve_recursive(rref_mat, max_vals, free_vars, attempt, depth + 1)
-            && solved.iter().all(|x| x >= &Fraction::from_int(0) && x.is_int())
+        if let Some(solved) = solve_recursive(
+            rref_mat,
+            max_vals,
+            free_vars,
+            attempt,
+            depth + 1,
+            best,
+        ) && solved.iter().all(|x| !x.is_negative() && x.is_int())
         {
             let sum = solved
                 .iter()
@@ -301,12 +298,12 @@ fn solve_recursive(
         attempt.pop();
     }
 
-    if best == i32::MAX { None } else { Some(best_res) }
+    if best_res.is_empty() { None } else { Some(best_res) }
 }
 
 fn gen_matrix(
-    buttons: &[Vec<u32>],
-    joltage: &[u32],
+    buttons: &[Vec<ParseInt>],
+    joltage: &[ParseInt],
 ) -> (Vec<Vec<Fraction>>, Vec<i32>) {
     let rows = joltage.len();
     let cols = buttons.len();
@@ -327,9 +324,7 @@ fn gen_matrix(
 
     for row in &mat {
         for i in 0..cols {
-            if row[i] != Fraction::from_int(0)
-                && row[cols].to_int() < max_vals[i]
-            {
+            if !row[i].is_zero() && row[cols].to_int() < max_vals[i] {
                 max_vals[i] = row[cols].to_int();
             }
         }
@@ -338,27 +333,38 @@ fn gen_matrix(
     (mat, max_vals)
 }
 
-fn full_solve(buttons: &[Vec<u32>], joltage: &[u32]) -> Option<Vec<Fraction>> {
+fn full_solve(
+    buttons: &[Vec<ParseInt>],
+    joltage: &[ParseInt],
+) -> Option<Vec<Fraction>> {
     let (mut matrix, max_vals) = gen_matrix(buttons, joltage);
     rref(&mut matrix);
     let free_vars = find_free_variables(&matrix);
     let mut attempt = Vec::new();
-    solve_recursive(&matrix, &max_vals, &free_vars, &mut attempt, 0)
+    solve_recursive(&matrix, &max_vals, &free_vars, &mut attempt, 0, i32::MAX)
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 struct Fraction {
     num: i32,
     den: i32,
+}
+
+impl std::fmt::Debug for Fraction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.num, self.den)
+    }
 }
 
 impl Fraction {
     fn new(mut num: i32, mut den: i32) -> Self {
         debug_assert_ne!(den, 0, "Division by zero");
 
-        let gcd = num::integer::gcd(num, den);
-        num /= gcd;
-        den /= gcd;
+        if num >= (1 << 13) || den >= (1 << 13) {
+            let gcd = num::integer::gcd(num, den);
+            num /= gcd;
+            den /= gcd;
+        }
 
         if den < 0 {
             num *= -1;
@@ -383,6 +389,14 @@ impl Fraction {
     fn is_int(&self) -> bool {
         self.num.is_multiple_of(&self.den)
     }
+
+    fn is_zero(&self) -> bool {
+        self.num == 0
+    }
+
+    fn is_negative(&self) -> bool {
+        self.num < 0
+    }
 }
 
 impl std::ops::Neg for Fraction {
@@ -400,6 +414,12 @@ impl std::ops::Add for Fraction {
         let num = self.num * rhs.den + self.den * rhs.num;
         let den = self.den * rhs.den;
         Self::new(num, den)
+    }
+}
+
+impl std::ops::AddAssign for Fraction {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
     }
 }
 
