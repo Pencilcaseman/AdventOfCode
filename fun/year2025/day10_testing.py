@@ -103,16 +103,10 @@ def rref(mat):
         for r in range(row, rows):
             v = mat[r][col]
 
-            if abs(v) == 1:
+            if v != 0:
                 pivot_row = r
                 pivot_val = v
                 break
-
-            # elif v != 0 and all(x % v == 0 for x in mat[r]):
-            #     div_row(mat, r, v)
-            #     pivot_row = r
-            #     pivot_val = 1
-            #     break
 
         # No pivot found, so skip this column
         if pivot_row == -1:
@@ -122,14 +116,24 @@ def rref(mat):
         # Move pivot row to the current row
         swap_rows(mat, pivot_row, row)
 
+        # Scale by LCM so all elements are divisible
         # Remove row from remaining rows if possible
+
         for r in range(rows):
-            if r != row and mat[r][col] % pivot_val == 0:
-                alpha = mat[r][col] // pivot_val
-                add_and_scale_row(mat, row, r, -alpha)
+            coef = mat[r][col]
+            if r != row and coef != 0:
+                lcm = math.lcm(pivot_val, coef)
+                scale_dst = lcm // coef
+                scale_src = lcm // pivot_val
+
+                for c in range(cols):
+                    mat[r][c] = mat[r][c] * scale_dst - mat[row][c] * scale_src
 
         if mat[row][col] < 0:
             scale_row(mat, row, -1)
+
+        print_matrix(mat)
+        print()
 
         row += 1
         col += 1
@@ -189,6 +193,26 @@ b1 - b11 - b12 = -184
 0 <= b1 <= 94
 -b12 = -184 - b1 + b11
 
+
+0  0  1  0  0  3  0  2  1  0  44
+b2 + 3b5 + 2b7 + b8 = 44
+b5 = 6
+b7 = 0
+
+b2 + 24 + b8 = 44
+b2 + b8 = 20
+
+
+1  0  0  0  0 -2  0 -1 -1  0 -22
+b0 - 2b5 - b7 - b8 = -22
+b5 = 6
+b7 = 0
+
+b0 - 12 - 0 - b8 = -22
+b0 - b8 = -10
+-b8 = -12 - b0
+b8 >= 10
+
 """
 
 
@@ -200,6 +224,8 @@ def solve_with_assignment(rref_mat, free_vars, assignment):
     col = 0
 
     total = sum(assignment)
+
+    res = [0 for _ in range(cols)]
 
     while row < rows and col < cols:
         while col < cols and rref_mat[row][col] == 0:
@@ -218,9 +244,14 @@ def solve_with_assignment(rref_mat, free_vars, assignment):
         if presses < 0:
             return None
 
+        res[col] = presses
+
         total += presses
 
         row += 1
+
+    if total == 88:
+        print(res)
 
     return total
 
@@ -229,14 +260,19 @@ def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
     rows = len(rref_mat)
     cols = len(rref_mat[0]) - 1
 
+    print("assignment:", assignment)
+
     if len(assignment) == len(free_vars):
         # Fully assigned. Solve remaining variables
         return solve_with_assignment(rref_mat, free_vars, assignment)
 
     # Identify lower and upper bounds for the current free variable
     free_col_idx = free_vars[depth]
-    lower_bound = lower_bounds[free_vars[depth]]
-    upper_bound = upper_bounds[free_vars[depth]]
+    # lower_bound = lower_bounds[free_vars[depth]]
+    # upper_bound = upper_bounds[free_vars[depth]]
+
+    lower_bound = 0
+    upper_bound = 2048
 
     for row in rref_mat:
         target = row[cols]
@@ -270,7 +306,11 @@ def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
 
         if upper_bound < lower_bound:
             # Impossible to satisfy
+            print(f"error: {lower_bound} <> {upper_bound}")
             return None
+
+        print(f"var {free_col_idx} in [{lower_bound}, {upper_bound}]")
+    print()
 
     # Try each possible value
     best = 1000000
@@ -314,24 +354,26 @@ def part2():
 
 
 def main():
+    #
+
     #   0   1   2   3   4   5   6   7   8   9  19  11  12
     # [16, 17,  2, 18,  2, 19,  0, 18, 21, 20,  0,  9, 192]
-    # buttons = [
-    #     (6, 7, 8),
-    #     (3, 5, 7),
-    #     (2, 4),
-    #     (1, 3, 4, 9),
-    #     (0, 1, 2, 3, 6, 7, 9),
-    #     (0, 1, 2, 3, 5, 8),
-    #     (3, 8),
-    #     (2, 3, 4, 6, 7, 8, 9),
-    #     (3, 4, 7, 8),
-    #     (0, 1, 2, 3, 4, 5, 7, 8),
-    #     (0, 1, 2, 4, 7),
-    #     (2, 4, 6),
-    #     (5, 6, 8, 9),
-    # ]
-    # joltage = [41, 59, 70, 115, 88, 248, 237, 94, 286, 230]
+    buttons = [
+        (6, 7, 8),
+        (3, 5, 7),
+        (2, 4),
+        (1, 3, 4, 9),
+        (0, 1, 2, 3, 6, 7, 9),
+        (0, 1, 2, 3, 5, 8),
+        (3, 8),
+        (2, 3, 4, 6, 7, 8, 9),
+        (3, 4, 7, 8),
+        (0, 1, 2, 3, 4, 5, 7, 8),
+        (0, 1, 2, 4, 7),
+        (2, 4, 6),
+        (5, 6, 8, 9),
+    ]
+    joltage = [41, 59, 70, 115, 88, 248, 237, 94, 286, 230]
 
     # # => 0  1  2  3  4  5
     # #   [1, 3, 0, 3, 1, 2]
@@ -344,19 +386,45 @@ def main():
     # buttons = [(0, 1, 2, 3, 4), (0, 3, 4), (0, 1, 2, 4, 5), (1, 2)]
     # joltage = [10, 11, 11, 5, 10, 5]
 
+    # buttons = [
+    #     [2, 3, 6],
+    #     [3, 4, 5, 6, 7, 8],
+    #     [0, 1, 2, 3, 4, 6, 8],
+    #     [0, 1, 2, 3, 4, 5, 6, 8],
+    #     [1, 3],
+    #     [1, 4, 5, 6, 8],
+    #     [6, 8],
+    #     [0, 1, 3, 4, 6, 7],
+    #     [1, 2, 3, 4, 8],
+    #     [4, 6],
+    # ]
+    # joltage = [44, 211, 64, 232, 70, 14, 80, 19, 53]
+
+    # buttons = [
+    #     [0, 1, 2, 3, 6, 9],
+    #     [1, 2, 3, 4, 6, 7, 8],
+    #     [0, 2, 4, 8],
+    #     [0, 2, 4, 5, 6, 8, 9],
+    #     [0, 3, 4, 6],
+    #     [0, 2, 3, 4, 5, 6, 8, 9],
+    #     [0, 1, 5, 7, 8],
+    #     [2, 3, 7, 8, 9],
+    # ]
+    # joltage = [71, 32, 75, 68, 71, 42, 74, 32, 73, 53]
+
     buttons = [
-        [2, 3, 6],
-        [3, 4, 5, 6, 7, 8],
-        [0, 1, 2, 3, 4, 6, 8],
-        [0, 1, 2, 3, 4, 5, 6, 8],
-        [1, 3],
-        [1, 4, 5, 6, 8],
-        [6, 8],
+        [3, 5],
+        [0, 1, 2, 3, 4, 5],
+        [0, 1, 3, 4, 5, 6],
+        [0, 2, 3, 4, 7],
+        [1, 2, 3, 5, 7],
+        [2, 6],
         [0, 1, 3, 4, 6, 7],
-        [1, 2, 3, 4, 8],
-        [4, 6],
+        [6, 7],
+        [1, 6, 7],
+        [2, 3, 4, 7],
     ]
-    joltage = [44, 211, 64, 232, 70, 14, 80, 19, 53]
+    joltage = [37, 66, 49, 72, 47, 43, 45, 64]
 
     mat, lower_bounds, upper_bounds = gen_matrix(buttons, joltage)
 
