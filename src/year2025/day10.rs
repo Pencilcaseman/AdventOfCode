@@ -1,7 +1,7 @@
 use num::Integer;
 use rayon::prelude::*;
 
-use crate::util::parse::{ParseSigned, ParseUnsigned};
+use crate::util::parse::ParseUnsigned;
 
 type Input = Vec<MachineConfig>;
 type ParseInt = u16;
@@ -47,12 +47,20 @@ pub fn part1(input: &Input) -> u32 {
 
 pub fn part2(input: &Input) -> i32 {
     input
-        .par_iter()
+        .iter()
         .map(|machine_config| {
+            let start = std::time::Instant::now();
             if let Some(res) =
                 full_solve(&machine_config.buttons, &machine_config.joltage)
             {
-                res.iter().copied().map(Fraction::to_int).sum::<i32>()
+                // println!(
+                //     "{machine_config:?} => {res:?} => {:?}",
+                //     start.elapsed()
+                // );
+                let res =
+                    res.iter().copied().map(Fraction::to_int).sum::<i32>();
+                // println!("{res:?}");
+                res
             } else {
                 panic!("Failed to solve config")
             }
@@ -272,6 +280,8 @@ fn solve_recursive(
         }
     }
 
+    println!("{depth} => {}", high.to_int());
+
     let mut best_res = Vec::new();
 
     for free_var_val in 0..(high.to_int() + 1) {
@@ -340,6 +350,18 @@ fn full_solve(
     let (mut matrix, max_vals) = gen_matrix(buttons, joltage);
     rref(&mut matrix);
     let free_vars = find_free_variables(&matrix);
+
+    // BUG: Does not work -- must sort max_vals as well
+    // free_vars.sort_unstable_by_key(|&v| max_vals[v]);
+
+    println!("free: {free_vars:?}");
+    println!("max : {max_vals:?}");
+
+    matrix.iter().for_each(|row| {
+        row.iter().for_each(|x| print!("{} ", x.to_int()));
+        println!();
+    });
+
     let mut attempt = Vec::new();
     solve_recursive(&matrix, &max_vals, &free_vars, &mut attempt, 0, i32::MAX)
 }
@@ -369,6 +391,10 @@ impl Fraction {
         if den < 0 {
             num *= -1;
             den *= -1;
+        }
+
+        if num == 0 {
+            den = 1;
         }
 
         Self { num, den }
