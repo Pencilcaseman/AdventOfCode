@@ -1,9 +1,12 @@
 use num::Integer;
 use rayon::prelude::*;
 
-use crate::util::parse::{ParseSigned, ParseUnsigned};
+use crate::util::parse::ParseSigned;
 
 type Input = Vec<MachineConfig>;
+
+// const MAX_PROBLEM_SIZE: usize = 16;
+// const MAX_FREE_VARS: usize = 4;
 
 pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
@@ -38,7 +41,7 @@ pub fn parse(input: &str) -> Input {
 //         .sum()
 // }
 
-pub fn part1(input: &Input) -> u32 {
+pub fn part1(_input: &Input) -> u32 {
     0
 }
 
@@ -58,6 +61,13 @@ pub struct MachineConfig {
     buttons: Vec<Vec<i32>>,
     joltage: Vec<i32>,
 }
+
+// #[derive(Clone)]
+// pub struct MachineConfig {
+//     target: u32,
+//     buttons: [[i32; MAX_PROBLEM_SIZE]; MAX_PROBLEM_SIZE],
+//     joltage: [i32; MAX_PROBLEM_SIZE],
+// }
 
 impl std::fmt::Debug for MachineConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -129,14 +139,14 @@ fn rref(mat: &mut [Vec<i32>]) {
             let pivot_val = mat[row][col];
 
             if r != row && coef != 0 {
-                let lcm = pivot_val.lcm(&coef).abs();
+                let lcm = pivot_val.lcm(&coef);
 
-                let scale_dst = lcm / coef.abs();
-                let scale_src = lcm / pivot_val.abs() * coef.signum();
+                let scale_dst = lcm / coef;
+                let scale_src = lcm / pivot_val;
 
-                for c in 0..=cols {
+                (0..=cols).for_each(|c| {
                     mat[r][c] = mat[r][c] * scale_dst - mat[row][c] * scale_src;
-                }
+                });
             }
         }
 
@@ -214,7 +224,6 @@ fn solve_with_attempt(
 fn recurse(
     rref_mat: &[Vec<i32>],
     free_vars: &[usize],
-    lower_bounds: &[i32],
     upper_bounds: &[i32],
     assignment: &mut Vec<i32>,
     depth: usize,
@@ -227,7 +236,7 @@ fn recurse(
 
     let free_col_idx = free_vars[depth];
 
-    let mut lower_bound = lower_bounds[free_vars[depth]];
+    let mut lower_bound = 0;
     let mut upper_bound = upper_bounds[free_vars[depth]];
 
     for row in rref_mat {
@@ -248,12 +257,8 @@ fn recurse(
                 continue;
             }
 
-            if c != free_col_idx {
-                if row[c] > 0 {
-                    target -= row[c] * lower_bounds[c];
-                } else {
-                    target -= row[c] * upper_bounds[c];
-                }
+            if c != free_col_idx && row[c] < 0 {
+                target -= row[c] * upper_bounds[c];
             }
         }
 
@@ -273,14 +278,9 @@ fn recurse(
     for b in lower_bound..=upper_bound {
         assignment.push(b);
 
-        if let Some(new) = recurse(
-            rref_mat,
-            free_vars,
-            lower_bounds,
-            upper_bounds,
-            assignment,
-            depth + 1,
-        ) {
+        if let Some(new) =
+            recurse(rref_mat, free_vars, upper_bounds, assignment, depth + 1)
+        {
             best = best.min(new);
         }
 
@@ -293,45 +293,38 @@ fn recurse(
 fn gen_matrix(
     buttons: &[Vec<i32>],
     joltage: &[i32],
-) -> (Vec<Vec<i32>>, Vec<i32>, Vec<i32>) {
+) -> (Vec<Vec<i32>>, Vec<i32>) {
     let rows = joltage.len();
     let cols = buttons.len();
 
     let mut mat = vec![vec![0; cols + 1]; rows];
-    let mut lower_bounds = vec![0; cols];
     let mut upper_bounds = vec![2048i32; cols];
 
     for col in 0..cols {
         for &toggle in &buttons[col] {
             mat[toggle as usize][col] = 1i32;
 
-            if (joltage[toggle as usize] as i32) < upper_bounds[col] {
-                upper_bounds[col] = joltage[toggle as usize] as i32;
+            if (joltage[toggle as usize]) < upper_bounds[col] {
+                upper_bounds[col] = joltage[toggle as usize];
             }
         }
     }
 
     for i in 0..rows {
-        mat[i][cols] = joltage[i] as i32;
+        mat[i][cols] = joltage[i];
     }
 
-    (mat, lower_bounds, upper_bounds)
+    (mat, upper_bounds)
 }
 
 fn full_solve(buttons: &[Vec<i32>], joltage: &[i32]) -> Option<i32> {
-    let (mut matrix, lower_bounds, upper_bounds) = gen_matrix(buttons, joltage);
+    let (mut matrix, upper_bounds) = gen_matrix(buttons, joltage);
+
     rref(&mut matrix);
     let free_vars = find_free_variables(&matrix);
 
     let mut assignment = Vec::new();
-    recurse(
-        &matrix,
-        &free_vars,
-        &lower_bounds,
-        &upper_bounds,
-        &mut assignment,
-        0,
-    )
+    recurse(&matrix, &free_vars, &upper_bounds, &mut assignment, 0)
 }
 
 // Answers for my input:
