@@ -1,7 +1,6 @@
 # pyright: standard
 
 import math
-import time
 
 
 def parse_line(line):
@@ -81,6 +80,8 @@ def scale_row(mat, row, alpha):
 
 def div_row(mat, row, alpha):
     for i in range(len(mat[0])):
+        if mat[row][i] % alpha != 0:
+            raise RuntimeError
         mat[row][i] //= alpha
 
 
@@ -126,31 +127,30 @@ def rref(mat):
         for r in range(rows):
             coef = mat[r][col]
             if r != row and coef != 0:
-                lcm = math.lcm(pivot_val, abs(coef))
-                scale_dst = lcm // abs(coef)
-                scale_src = lcm // pivot_val * (1 if coef > 0 else -1)
+                lcm = math.lcm(pivot_val, coef)
+                scale_dst = lcm // coef
+                scale_src = lcm // pivot_val
 
                 for c in range(cols + 1):
                     mat[r][c] = mat[r][c] * scale_dst - mat[row][c] * scale_src
 
         row += 1
-        col += 1
 
 
 def find_free_variables(rref_mat):
     rows = len(rref_mat)
-    cols = len(rref_mat[0])
+    cols = len(rref_mat[0]) - 1
     free = []
 
     col = 0
 
     for row in range(rows):
-        while col < cols - 1 and rref_mat[row][col] == 0:
+        while col < cols and rref_mat[row][col] == 0:
             free.append(col)
             col += 1
         col += 1
 
-    while col < cols - 1:
+    while col < cols:
         free.append(col)
         col += 1
 
@@ -237,6 +237,9 @@ def solve_with_assignment(rref_mat, free_vars, assignment):
         for var, val in zip(free_vars, assignment):
             target -= rref_mat[row][var] * val
 
+        if target % rref_mat[row][col] != 0:
+            return None
+
         presses = target // rref_mat[row][col]
 
         if presses < 0:
@@ -252,7 +255,6 @@ def solve_with_assignment(rref_mat, free_vars, assignment):
 
 
 def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
-    rows = len(rref_mat)
     cols = len(rref_mat[0]) - 1
 
     if len(assignment) == len(free_vars):
@@ -264,9 +266,6 @@ def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
 
     lower_bound = lower_bounds[free_vars[depth]]
     upper_bound = upper_bounds[free_vars[depth]]
-
-    # lower_bound = 0
-    # upper_bound = 2048
 
     for row in rref_mat:
         target = row[cols]
@@ -303,7 +302,7 @@ def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
             return None
 
     # Try each possible value
-    best = 1000000
+    best = 1 << 32  # placeholder
 
     for b in range(lower_bound, upper_bound + 1):
         assignment.append(b)
@@ -312,7 +311,7 @@ def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
         )
         assignment.pop()
 
-        if result is not None and result <= best:
+        if result is not None and result < best:
             best = result
 
     return best
@@ -332,13 +331,9 @@ def part2():
 
             res = recurse(mat, free_vars, lower_bounds, upper_bounds, [], 0)
 
-            # print(buttons)
-            # print(joltage)
-            print(res)
-            # print()
-
-            if res is not None:
-                total += res
+            if res is None:
+                raise RuntimeError
+            total += res
 
     return total
 
@@ -346,24 +341,24 @@ def part2():
 def main():
     #
 
-    #   0   1   2   3   4   5   6   7   8   9  19  11  12
-    # [16, 17,  2, 18,  2, 19,  0, 18, 21, 20,  0,  9, 192]
-    buttons = [
-        (6, 7, 8),
-        (3, 5, 7),
-        (2, 4),
-        (1, 3, 4, 9),
-        (0, 1, 2, 3, 6, 7, 9),
-        (0, 1, 2, 3, 5, 8),
-        (3, 8),
-        (2, 3, 4, 6, 7, 8, 9),
-        (3, 4, 7, 8),
-        (0, 1, 2, 3, 4, 5, 7, 8),
-        (0, 1, 2, 4, 7),
-        (2, 4, 6),
-        (5, 6, 8, 9),
-    ]
-    joltage = [41, 59, 70, 115, 88, 248, 237, 94, 286, 230]
+    # #   0   1   2   3   4   5   6   7   8   9  19  11  12
+    # # [16, 17,  2, 18,  2, 19,  0, 18, 21, 20,  0,  9, 192]
+    # buttons = [
+    #     (6, 7, 8),
+    #     (3, 5, 7),
+    #     (2, 4),
+    #     (1, 3, 4, 9),
+    #     (0, 1, 2, 3, 6, 7, 9),
+    #     (0, 1, 2, 3, 5, 8),
+    #     (3, 8),
+    #     (2, 3, 4, 6, 7, 8, 9),
+    #     (3, 4, 7, 8),
+    #     (0, 1, 2, 3, 4, 5, 7, 8),
+    #     (0, 1, 2, 4, 7),
+    #     (2, 4, 6),
+    #     (5, 6, 8, 9),
+    # ]
+    # joltage = [41, 59, 70, 115, 88, 248, 237, 94, 286, 230]
 
     # # => 0  1  2  3  4  5
     # #   [1, 3, 0, 3, 1, 2]
@@ -402,19 +397,30 @@ def main():
     # ]
     # joltage = [71, 32, 75, 68, 71, 42, 74, 32, 73, 53]
 
+    # buttons = [
+    #     [3, 5],
+    #     [0, 1, 2, 3, 4, 5],
+    #     [0, 1, 3, 4, 5, 6],
+    #     [0, 2, 3, 4, 7],
+    #     [1, 2, 3, 5, 7],
+    #     [2, 6],
+    #     [0, 1, 3, 4, 6, 7],
+    #     [6, 7],
+    #     [1, 6, 7],
+    #     [2, 3, 4, 7],
+    # ]
+    # joltage = [37, 66, 49, 72, 47, 43, 45, 64]
+
     buttons = [
-        [3, 5],
-        [0, 1, 2, 3, 4, 5],
-        [0, 1, 3, 4, 5, 6],
-        [0, 2, 3, 4, 7],
-        [1, 2, 3, 5, 7],
-        [2, 6],
-        [0, 1, 3, 4, 6, 7],
-        [6, 7],
-        [1, 6, 7],
-        [2, 3, 4, 7],
+        [0, 1, 2, 4, 5],
+        [0, 4, 5],
+        [2, 3],
+        [1, 3],
+        [2, 3, 4, 5],
+        [0, 1, 4, 5],
+        [2, 5],
     ]
-    joltage = [37, 66, 49, 72, 47, 43, 45, 64]
+    joltage = [33, 38, 44, 37, 46, 51]
 
     mat, lower_bounds, upper_bounds = gen_matrix(buttons, joltage)
 
