@@ -116,24 +116,22 @@ def rref(mat):
         # Move pivot row to the current row
         swap_rows(mat, pivot_row, row)
 
+        if mat[row][col] < 0:
+            scale_row(mat, row, -1)
+            pivot_val *= -1
+
         # Scale by LCM so all elements are divisible
         # Remove row from remaining rows if possible
 
         for r in range(rows):
             coef = mat[r][col]
             if r != row and coef != 0:
-                lcm = math.lcm(pivot_val, coef)
-                scale_dst = lcm // coef
-                scale_src = lcm // pivot_val
+                lcm = math.lcm(pivot_val, abs(coef))
+                scale_dst = lcm // abs(coef)
+                scale_src = lcm // pivot_val * (1 if coef > 0 else -1)
 
-                for c in range(cols):
+                for c in range(cols + 1):
                     mat[r][c] = mat[r][c] * scale_dst - mat[row][c] * scale_src
-
-        if mat[row][col] < 0:
-            scale_row(mat, row, -1)
-
-        print_matrix(mat)
-        print()
 
         row += 1
         col += 1
@@ -250,9 +248,6 @@ def solve_with_assignment(rref_mat, free_vars, assignment):
 
         row += 1
 
-    if total == 88:
-        print(res)
-
     return total
 
 
@@ -260,19 +255,18 @@ def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
     rows = len(rref_mat)
     cols = len(rref_mat[0]) - 1
 
-    print("assignment:", assignment)
-
     if len(assignment) == len(free_vars):
         # Fully assigned. Solve remaining variables
         return solve_with_assignment(rref_mat, free_vars, assignment)
 
     # Identify lower and upper bounds for the current free variable
     free_col_idx = free_vars[depth]
-    # lower_bound = lower_bounds[free_vars[depth]]
-    # upper_bound = upper_bounds[free_vars[depth]]
 
-    lower_bound = 0
-    upper_bound = 2048
+    lower_bound = lower_bounds[free_vars[depth]]
+    upper_bound = upper_bounds[free_vars[depth]]
+
+    # lower_bound = 0
+    # upper_bound = 2048
 
     for row in rref_mat:
         target = row[cols]
@@ -306,11 +300,7 @@ def recurse(rref_mat, free_vars, lower_bounds, upper_bounds, assignment, depth):
 
         if upper_bound < lower_bound:
             # Impossible to satisfy
-            print(f"error: {lower_bound} <> {upper_bound}")
             return None
-
-        print(f"var {free_col_idx} in [{lower_bound}, {upper_bound}]")
-    print()
 
     # Try each possible value
     best = 1000000
@@ -342,10 +332,10 @@ def part2():
 
             res = recurse(mat, free_vars, lower_bounds, upper_bounds, [], 0)
 
-            print(buttons)
-            print(joltage)
+            # print(buttons)
+            # print(joltage)
             print(res)
-            print()
+            # print()
 
             if res is not None:
                 total += res
@@ -449,7 +439,7 @@ def main():
 
     print(res)
 
-    # print(part2())
+    print(part2())
 
 
 if __name__ == "__main__":
