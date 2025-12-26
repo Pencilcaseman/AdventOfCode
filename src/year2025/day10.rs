@@ -1,12 +1,12 @@
 use num::Integer;
 use rayon::prelude::*;
 
-use crate::util::parse::ParseSigned;
+use crate::util::parse::{ParseSigned, ParseUnsigned};
 
 type Input = Vec<MachineConfig>;
 
-// const MAX_PROBLEM_SIZE: usize = 16;
-// const MAX_FREE_VARS: usize = 4;
+const MAX_PROBLEM_SIZE: usize = 16;
+const MAX_FREE_VARS: usize = 4;
 
 pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
@@ -58,16 +58,15 @@ pub fn part2(input: &Input) -> i32 {
 #[derive(Clone)]
 pub struct MachineConfig {
     target: u32,
-    buttons: Vec<Vec<i32>>,
+    buttons: Vec<u32>,
     joltage: Vec<i32>,
 }
 
-// #[derive(Clone)]
-// pub struct MachineConfig {
-//     target: u32,
-//     buttons: [[i32; MAX_PROBLEM_SIZE]; MAX_PROBLEM_SIZE],
-//     joltage: [i32; MAX_PROBLEM_SIZE],
-// }
+pub struct ProblemMatrix<const N: usize> {
+    mat: [[i32; N]; N],
+    rows: usize,
+    cols: usize,
+}
 
 impl std::fmt::Debug for MachineConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -81,62 +80,66 @@ impl std::fmt::Debug for MachineConfig {
 
 impl MachineConfig {
     fn new(conf: &str) -> Option<MachineConfig> {
-        let mut segments = conf.split(' ').map(|s| s.bytes());
+        let segments: Vec<_> = conf.split_ascii_whitespace().collect();
 
-        // Parse the toggle states
-        let mut toggle_target = 0;
-        let toggle_bytes = segments.next()?;
-        for b in toggle_bytes {
-            toggle_target <<= 1;
-            if b == b'#' {
-                toggle_target |= 1;
-            }
-        }
+        let number_seg_end = segments.len() - 1;
 
-        let mut number_segs: Vec<Vec<i32>> =
-            segments.map(|b| ParseSigned::<i32>::new(b).collect()).collect();
+        let toggle_target = segments[0][1..]
+            .bytes()
+            .enumerate()
+            .fold(0, |toggle, (i, b)| toggle | ((b == b'#') as u32) << i);
 
-        let joltage = number_segs.pop()?;
+        let number_segs: Vec<_> = segments[1..number_seg_end]
+            .iter()
+            .map(|s| {
+                ParseUnsigned::<u32>::new(s.bytes())
+                    .fold(0, |button, b| button | (1 << b))
+            })
+            .collect();
+
+        let joltage: Vec<_> =
+            ParseSigned::<i32>::new(segments[number_seg_end].bytes()).collect();
 
         Some(Self { target: toggle_target, buttons: number_segs, joltage })
     }
 }
 
-fn swap_rows(mat: &mut [Vec<i32>], i: usize, j: usize) {
+fn swap_rows<const N: usize>(mat: &mut [[i32; N]; N], i: usize, j: usize) {
     if i != j {
         mat.swap(i, j);
     }
 }
 
-fn scale_row(mat: &mut [Vec<i32>], i: usize, alpha: i32) {
+fn scale_row<const N: usize>(mat: &mut [[i32; N]; N], i: usize, alpha: i32) {
     mat[i].iter_mut().for_each(|x| *x *= alpha);
 }
 
-fn rref(mat: &mut [Vec<i32>]) {
-    let rows = mat.len();
-    let cols = mat[0].len() - 1;
+fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
+    let rows = mat.rows;
+    let cols = mat.cols;
 
     let mut row = 0;
     let mut col = 0;
 
     while row < rows && col < cols {
-        let Some(pivot_row) = (row..rows).find(|&r| mat[r][col] != 0) else {
+        let Some(pivot_row) = (row..rows).find(|&r| mat.mat[r][col] != 0)
+        else {
             col += 1;
             continue;
         };
 
-        swap_rows(mat, pivot_row, row);
+        swap_rows(&mut mat.mat, pivot_row, row);
 
-        if mat[row][col] < 0 {
-            scale_row(mat, row, -1);
+        if mat.mat[row][col] < 0 {
+            scale_row(&mut mat.mat, row, -1);
         }
 
         // Scale by LCM so all elements are divisible
         // Remove row from remaining rows if possible
 
         for r in 0..rows {
-            let coef = mat[r][col];
-            let pivot_val = mat[row][col];
+            let coef = mat.mat[r][col];
+            let pivot_val = mat.mat[row][col];
 
             if r != row && coef != 0 {
                 let lcm = pivot_val.lcm(&coef);
@@ -145,7 +148,8 @@ fn rref(mat: &mut [Vec<i32>]) {
                 let scale_src = lcm / pivot_val;
 
                 (0..=cols).for_each(|c| {
-                    mat[r][c] = mat[r][c] * scale_dst - mat[row][c] * scale_src;
+                    mat.mat[r][c] =
+                        mat.mat[r][c] * scale_dst - mat.mat[row][c] * scale_src;
                 });
             }
         }
@@ -154,13 +158,15 @@ fn rref(mat: &mut [Vec<i32>]) {
     }
 }
 
-fn find_free_variables(rref_mat: &[Vec<i32>]) -> Vec<usize> {
-    let cols = rref_mat[0].len() - 1;
+fn find_free_variables<const N: usize>(
+    rref_mat: &ProblemMatrix<N>,
+) -> Vec<usize> {
+    let cols = rref_mat.cols;
 
     let mut free = Vec::new();
     let mut col = 0;
 
-    for row in rref_mat {
+    for row in rref_mat.mat {
         while col < cols && row[col] == 0 {
             free.push(col);
             col += 1
@@ -174,13 +180,14 @@ fn find_free_variables(rref_mat: &[Vec<i32>]) -> Vec<usize> {
     free
 }
 
-fn solve_with_attempt(
-    rref_mat: &[Vec<i32>],
+fn solve_with_attempt<const N: usize>(
+    // rref_mat: &[[i32; N]],
+    rref_mat: &ProblemMatrix<N>,
     free_vars: &[usize],
     assignment: &[i32],
 ) -> Option<i32> {
-    let rows = rref_mat.len();
-    let cols = rref_mat[0].len() - 1;
+    let rows = rref_mat.rows;
+    let cols = rref_mat.cols;
 
     let mut row = 0;
     let mut col = 0;
@@ -188,7 +195,7 @@ fn solve_with_attempt(
     let mut total: i32 = assignment.iter().sum();
 
     while row < rows && col < cols {
-        while col < cols && rref_mat[row][col] == 0 {
+        while col < cols && rref_mat.mat[row][col] == 0 {
             col += 1;
         }
 
@@ -196,18 +203,18 @@ fn solve_with_attempt(
             continue;
         }
 
-        let target = rref_mat[row][cols]
+        let target = rref_mat.mat[row][cols]
             - free_vars
                 .iter()
                 .zip(assignment)
-                .map(|(&var, val)| rref_mat[row][var] * val)
+                .map(|(&var, val)| rref_mat.mat[row][var] * val)
                 .sum::<i32>();
 
-        if !target.is_multiple_of(&rref_mat[row][col]) {
+        if !target.is_multiple_of(&rref_mat.mat[row][col]) {
             return None;
         }
 
-        let presses = target / rref_mat[row][col];
+        let presses = target / rref_mat.mat[row][col];
 
         if presses < 0 {
             return None;
@@ -221,14 +228,15 @@ fn solve_with_attempt(
     Some(total)
 }
 
-fn recurse(
-    rref_mat: &[Vec<i32>],
+fn recurse<const N: usize>(
+    // rref_mat: &[[i32; N]],
+    rref_mat: &ProblemMatrix<N>,
     free_vars: &[usize],
     upper_bounds: &[i32],
     assignment: &mut Vec<i32>,
     depth: usize,
 ) -> Option<i32> {
-    let cols = rref_mat[0].len() - 1;
+    let cols = rref_mat.cols;
 
     if assignment.len() == free_vars.len() {
         return solve_with_attempt(rref_mat, free_vars, assignment);
@@ -239,7 +247,7 @@ fn recurse(
     let mut lower_bound = 0;
     let mut upper_bound = upper_bounds[free_vars[depth]];
 
-    for row in rref_mat {
+    for row in rref_mat.mat {
         let mut target = row[cols];
         let coef = row[free_col_idx];
 
@@ -290,18 +298,23 @@ fn recurse(
     if best == i32::MAX { None } else { Some(best) }
 }
 
-fn gen_matrix(
-    buttons: &[Vec<i32>],
+fn gen_matrix<const N: usize>(
+    buttons: &[u32],
     joltage: &[i32],
-) -> (Vec<Vec<i32>>, Vec<i32>) {
+) -> (ProblemMatrix<N>, Vec<i32>) {
     let rows = joltage.len();
     let cols = buttons.len();
 
-    let mut mat = vec![vec![0; cols + 1]; rows];
+    let mut mat = [[0; N]; N];
+
     let mut upper_bounds = vec![2048i32; cols];
 
+    for i in 0..rows {
+        mat[i][cols] = joltage[i];
+    }
+
     for col in 0..cols {
-        for &toggle in &buttons[col] {
+        for toggle in BitIterator::new(buttons[col]) {
             mat[toggle as usize][col] = 1i32;
 
             if (joltage[toggle as usize]) < upper_bounds[col] {
@@ -310,21 +323,55 @@ fn gen_matrix(
         }
     }
 
-    for i in 0..rows {
-        mat[i][cols] = joltage[i];
-    }
+    let problem_matrix = ProblemMatrix { mat, rows, cols };
 
-    (mat, upper_bounds)
+    (problem_matrix, upper_bounds)
 }
 
-fn full_solve(buttons: &[Vec<i32>], joltage: &[i32]) -> Option<i32> {
-    let (mut matrix, upper_bounds) = gen_matrix(buttons, joltage);
+fn full_solve(buttons: &[u32], joltage: &[i32]) -> Option<i32> {
+    let (mut matrix, upper_bounds) =
+        gen_matrix::<MAX_PROBLEM_SIZE>(buttons, joltage);
 
     rref(&mut matrix);
     let free_vars = find_free_variables(&matrix);
 
     let mut assignment = Vec::new();
     recurse(&matrix, &free_vars, &upper_bounds, &mut assignment, 0)
+}
+
+// From https://github.com/maneatingape/advent-of-code-rust/blob/main/src/util/bitset.rs
+
+struct BitIterator<T> {
+    t: T,
+}
+
+impl<T> BitIterator<T> {
+    fn new(t: T) -> Self
+    where
+        T: Copy,
+    {
+        Self { t }
+    }
+}
+
+impl<T> std::iter::Iterator for BitIterator<T>
+where
+    T: num_traits::int::PrimInt,
+{
+    type Item = usize;
+
+    fn next(&mut self) -> Option<Self::Item>
+    where
+        T: num_traits::Zero + num_traits::One,
+    {
+        if self.t == T::zero() {
+            None
+        } else {
+            let tz = self.t.trailing_zeros() as usize;
+            self.t = self.t ^ (T::one() << tz);
+            Some(tz as usize)
+        }
+    }
 }
 
 // Answers for my input:
