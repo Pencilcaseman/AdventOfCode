@@ -48,7 +48,8 @@ pub fn part1(_input: &Input) -> u32 {
 
 pub fn part2(input: &Input) -> i32 {
     input
-        .iter()
+        // .iter()
+        .par_iter()
         .map(|machine_config| {
             full_solve(&machine_config.buttons, &machine_config.joltage)
                 .unwrap()
@@ -195,7 +196,9 @@ fn solve_with_attempt<const N: usize, const M: usize>(
     let mut total: i32 = assignment.iter().sum();
 
     while row < rows && col < cols {
-        while col < cols && rref_mat.mat[row][col] == 0 {
+        let mat_row = &rref_mat.mat[row];
+
+        while col < cols && mat_row[col] == 0 {
             col += 1;
         }
 
@@ -203,18 +206,16 @@ fn solve_with_attempt<const N: usize, const M: usize>(
             continue;
         }
 
-        let target = rref_mat.mat[row][cols]
-            - free_vars
-                .iter()
-                .zip(assignment)
-                .map(|(&var, val)| rref_mat.mat[row][var] * val)
-                .sum::<i32>();
+        let mut target = mat_row[cols];
+        for i in 0..assignment.len() {
+            target -= mat_row[free_vars[i]] * assignment[i];
+        }
 
-        if !target.is_multiple_of(&rref_mat.mat[row][col]) {
+        if !target.is_multiple_of(&mat_row[col]) {
             return None;
         }
 
-        let presses = target / rref_mat.mat[row][col];
+        let presses = target / mat_row[col];
 
         if presses < 0 {
             return None;
