@@ -1,5 +1,6 @@
 use num::Integer;
 use rayon::prelude::*;
+use smallvec::SmallVec;
 
 use crate::util::parse::{ParseSigned, ParseUnsigned};
 
@@ -47,7 +48,7 @@ pub fn part1(_input: &Input) -> u32 {
 
 pub fn part2(input: &Input) -> i32 {
     input
-        .par_iter()
+        .iter()
         .map(|machine_config| {
             full_solve(&machine_config.buttons, &machine_config.joltage)
                 .unwrap()
@@ -158,12 +159,12 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
     }
 }
 
-fn find_free_variables<const N: usize>(
+fn find_free_variables<const N: usize, const M: usize>(
     rref_mat: &ProblemMatrix<N>,
-) -> Vec<usize> {
+) -> SmallVec<usize, M> {
     let cols = rref_mat.cols;
 
-    let mut free = Vec::new();
+    let mut free = SmallVec::new();
     let mut col = 0;
 
     for row in rref_mat.mat {
@@ -180,11 +181,10 @@ fn find_free_variables<const N: usize>(
     free
 }
 
-fn solve_with_attempt<const N: usize>(
-    // rref_mat: &[[i32; N]],
+fn solve_with_attempt<const N: usize, const M: usize>(
     rref_mat: &ProblemMatrix<N>,
-    free_vars: &[usize],
-    assignment: &[i32],
+    free_vars: &SmallVec<usize, M>,
+    assignment: &SmallVec<i32, M>,
 ) -> Option<i32> {
     let rows = rref_mat.rows;
     let cols = rref_mat.cols;
@@ -228,12 +228,11 @@ fn solve_with_attempt<const N: usize>(
     Some(total)
 }
 
-fn recurse<const N: usize>(
-    // rref_mat: &[[i32; N]],
+fn recurse<const N: usize, const M: usize>(
     rref_mat: &ProblemMatrix<N>,
-    free_vars: &[usize],
+    free_vars: &SmallVec<usize, M>,
     upper_bounds: &[i32],
-    assignment: &mut Vec<i32>,
+    assignment: &mut SmallVec<i32, M>,
     depth: usize,
 ) -> Option<i32> {
     let cols = rref_mat.cols;
@@ -283,17 +282,17 @@ fn recurse<const N: usize>(
 
     let mut best = i32::MAX;
 
+    assignment.push(0);
     for b in lower_bound..=upper_bound {
-        assignment.push(b);
+        assignment[depth] = b;
 
         if let Some(new) =
             recurse(rref_mat, free_vars, upper_bounds, assignment, depth + 1)
         {
             best = best.min(new);
         }
-
-        assignment.pop();
     }
+    assignment.pop();
 
     if best == i32::MAX { None } else { Some(best) }
 }
@@ -333,9 +332,10 @@ fn full_solve(buttons: &[u32], joltage: &[i32]) -> Option<i32> {
         gen_matrix::<MAX_PROBLEM_SIZE>(buttons, joltage);
 
     rref(&mut matrix);
-    let free_vars = find_free_variables(&matrix);
+    let free_vars =
+        find_free_variables::<MAX_PROBLEM_SIZE, MAX_FREE_VARS>(&matrix);
 
-    let mut assignment = Vec::new();
+    let mut assignment = SmallVec::<i32, MAX_FREE_VARS>::new();
     recurse(&matrix, &free_vars, &upper_bounds, &mut assignment, 0)
 }
 

@@ -13,7 +13,7 @@ num = "0.4.3"
 num-traits = { version = "0.2", features = ["i128"] }
 rayon = "1.11"
 rustc-hash = "2.1"
-smallvec = "1.15"
+smallvec = "2.0.0-alpha.12"
 
 [dev-dependencies]
 criterion = { version = "4.1", package = "codspeed-criterion-compat", features = ["csv_output", "html_reports"] }
@@ -27,20 +27,15 @@ strip = true
 debug = false
 debug-assertions = false
 
-[profile.release.package."*"]
-codegen-units = 1
-opt-level = 3
-strip = true
-debug = false
-debug-assertions = false
-
 [profile.profile]
 inherits = "release"
+panic = "abort"
+codegen-units = 1
+lto = false
+opt-level = 3
+strip = false
 debug = true
-
-[profile.profile.package."*"]
-inherits = "release"
-debug = true
+debug-assertions = false
 
 [[bench]]
 name = "benchmark"
