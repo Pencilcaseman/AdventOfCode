@@ -39,17 +39,22 @@ pub fn part1(input: &Input) -> u32 {
     res
 }
 
-pub fn part2(input: &Input) -> u32 {
-    let mut stack = vec!["svr"];
+pub fn part2(input: &Input) -> u64 {
+    let mut stack = vec![("svr", false, false)];
     let mut res = 0;
 
-    while let Some(current) = stack.pop() {
-        for next in &input[current] {
-            if *next != "out" {
-                stack.push(next);
-            } else {
-                res += 1;
+    while let Some((current, mut seen_dac, mut seen_fft)) = stack.pop() {
+        for &next in &input[current] {
+            if next == "out" {
+                res += (seen_dac && seen_fft) as u64;
+                break;
+            } else if next == "dac" {
+                seen_dac = true;
+            } else if next == "fft" {
+                seen_fft = true;
             }
+
+            stack.push((next, seen_dac, seen_fft));
         }
     }
 
