@@ -7,15 +7,9 @@ pub fn parse(input: &str) -> Input {
     let mut graph = vec![vec![]; MAX_NODES];
 
     for line in input.lines() {
-        let (from, to_many) = line.split_at(3);
-
-        let from_idx = encode(from);
-
-        for to in to_many[2..].split_ascii_whitespace() {
-            let to_idx = encode(to);
-
-            graph[from_idx].push(to_idx);
-        }
+        let mut iter = line.split_ascii_whitespace();
+        let from = encode(&iter.next().unwrap()[..3]);
+        graph[from].extend(iter.map(encode));
     }
 
     graph
@@ -26,15 +20,19 @@ pub fn part1(input: &Input) -> u64 {
 }
 
 pub fn part2(input: &Input) -> u64 {
-    let fft_to_dac = num_paths(input, "svr", "fft")
-        * num_paths(input, "fft", "dac")
-        * num_paths(input, "dac", "out");
+    let fft_to_dac = num_paths(input, "fft", "dac");
 
-    let dac_to_fft = num_paths(input, "svr", "dac")
-        * num_paths(input, "dac", "fft")
-        * num_paths(input, "fft", "out");
-
-    fft_to_dac + dac_to_fft
+    if fft_to_dac != 0 {
+        // fft comes before dac
+        num_paths(input, "svr", "fft")
+            * fft_to_dac
+            * num_paths(input, "dac", "out")
+    } else {
+        // dac comes before fft
+        num_paths(input, "svr", "dac")
+            * num_paths(input, "dac", "fft")
+            * num_paths(input, "fft", "out")
+    }
 }
 
 fn encode(node: &str) -> usize {
