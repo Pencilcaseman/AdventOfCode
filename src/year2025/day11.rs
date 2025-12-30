@@ -26,9 +26,15 @@ pub fn part1(input: &Input) -> u64 {
 }
 
 pub fn part2(input: &Input) -> u64 {
-    num_paths(input, "svr", "fft")
+    let fft_to_dac = num_paths(input, "svr", "fft")
         * num_paths(input, "fft", "dac")
-        * num_paths(input, "dac", "out")
+        * num_paths(input, "dac", "out");
+
+    let dac_to_fft = num_paths(input, "svr", "dac")
+        * num_paths(input, "dac", "fft")
+        * num_paths(input, "fft", "out");
+
+    fft_to_dac + dac_to_fft
 }
 
 fn encode(node: &str) -> usize {
