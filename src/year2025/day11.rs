@@ -22,44 +22,36 @@ pub fn parse(input: &str) -> Input {
 }
 
 pub fn part1(input: &Input) -> u64 {
-    num_paths(input, encode("you"), encode("out")).unwrap()
+    num_paths(input, "you", "out")
 }
 
 pub fn part2(input: &Input) -> u64 {
-    let svr = encode("svr");
-    let fft = encode("fft");
-    let dac = encode("dac");
-    let out = encode("out");
-
-    num_paths(input, svr, fft).unwrap()
-        * num_paths(input, fft, dac).unwrap()
-        * num_paths(input, dac, out).unwrap()
+    num_paths(input, "svr", "fft")
+        * num_paths(input, "fft", "dac")
+        * num_paths(input, "dac", "out")
 }
 
 fn encode(node: &str) -> usize {
     node.bytes().fold(0, |p, c| (c - b'a') as usize + 26 * p)
 }
 
-pub fn num_paths(input: &Input, src: usize, dst: usize) -> Option<u64> {
+pub fn num_paths(input: &Input, src: &str, dst: &str) -> u64 {
     let mut cache = vec![u64::MAX; MAX_NODES];
-    dfs(input, src, dst, &mut cache)
+    dfs(input, encode(src), encode(dst), &mut cache)
 }
 
-pub fn dfs(
-    input: &Input,
-    src: usize,
-    dst: usize,
-    cache: &mut [u64],
-) -> Option<u64> {
+pub fn dfs(input: &Input, src: usize, dst: usize, cache: &mut [u64]) -> u64 {
     if src == dst {
-        Some(1)
+        // Target found
+        1
     } else if cache[src] != u64::MAX {
-        Some(cache[src])
+        // Cache hit
+        cache[src]
     } else {
-        let num = input[src].iter().try_fold(0, |sum, &child| {
-            Some(dfs(input, child, dst, cache)? + sum)
-        });
-        cache[src] = num?;
+        // No cached value, so iterate over all children and recurse
+        let num =
+            input[src].iter().map(|&child| dfs(input, child, dst, cache)).sum();
+        cache[src] = num;
         num
     }
 }
