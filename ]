@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet, VecDeque, hash_map::Entry};
 
 use rustc_hash::FxBuildHasher;
 
-type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
-type FastHashSet<K> = HashSet<K, FxBuildHasher>;
+// type FastHashMap<K, V> = HashMap<K, V, FxBuildHasher>;
+// type FastHashSet<K> = HashSet<K, FxBuildHasher>;
 
 #[derive(Default, Debug)]
 pub struct Node<'a> {
@@ -11,7 +11,7 @@ pub struct Node<'a> {
     backward: Vec<&'a str>,
 }
 
-type Input<'a> = FastHashMap<&'a str, Node<'a>>;
+type Input<'a> = HashMap<&'a str, Node<'a>>;
 
 pub fn parse<'a>(input: &'a str) -> Input<'a> {
     // TODO: Store graph as a matrix: row -> col ==> Node[row] -> Node[col]
@@ -56,16 +56,21 @@ pub fn part1(input: &Input) -> u64 {
 }
 
 pub fn part2(input: &Input) -> u64 {
+    println!("connected to fft: {:?}", connected_to(input, "fft"));
+    println!("connected to dac: {:?}", connected_to(input, "dac"));
+    println!("connected to out: {:?}", connected_to(input, "out"));
+    // solve(input, "svr", "fft", Some(&connected_to(input, "fft")))
+
     solve(input, "svr", "fft", Some(&connected_to(input, "fft")))
         * solve(input, "fft", "dac", Some(&connected_to(input, "dac")))
-        * solve(input, "dac", "out", Some(&connected_to(input, "out")))
+        * solve(input, "fft", "out", Some(&connected_to(input, "out")))
 }
 
 pub fn solve(
     input: &Input,
     src: &str,
     dst: &str,
-    connected: Option<&FastHashSet<&str>>,
+    connected: Option<&HashSet<&str>>,
 ) -> u64 {
     let mut stack = vec![src];
     let mut res = 0;
@@ -86,8 +91,8 @@ pub fn solve(
     res
 }
 
-fn connected_to<'a>(graph: &'a Input, node: &'a str) -> FastHashSet<&'a str> {
-    let mut connected = FastHashSet::<&'a str>::default();
+fn connected_to<'a>(graph: &'a Input, node: &'a str) -> HashSet<&'a str> {
+    let mut connected = HashSet::<&'a str>::default();
 
     connected.insert(node);
 
@@ -109,4 +114,4 @@ fn connected_to<'a>(graph: &'a Input, node: &'a str) -> FastHashSet<&'a str> {
 
 // Answers for my input:
 // Part 1: 494
-// Part 2: 296006754704850
+// Part 2:
