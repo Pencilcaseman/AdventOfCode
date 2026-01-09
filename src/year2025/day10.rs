@@ -1,8 +1,11 @@
-use num::{Integer, PrimInt};
+use num::Integer;
 use rayon::prelude::*;
 use smallvec::SmallVec;
 
-use crate::util::parse::{ParseSigned, ParseUnsigned};
+use crate::util::{
+    iter::HammingBitIter,
+    parse::{ParseSigned, ParseUnsigned},
+};
 
 type Input = Vec<MachineConfig>;
 
@@ -17,25 +20,28 @@ pub fn part1(input: &Input) -> u32 {
     let mut res = 0;
 
     for machine_config in input {
-        let mut best_count = u32::MAX;
-
         let i_max = 1 << machine_config.buttons.len();
+        let buttons = &machine_config.buttons;
+        let target = machine_config.target;
 
-        for i in 0..i_max {
+        for i in HammingBitIter::new(i_max) {
             let mut val = 0;
+            let mut temp = i;
 
-            for idx in BitIterator::new(i) {
-                val ^= machine_config.buttons[idx];
+            while temp != 0 {
+                let idx = temp.trailing_zeros();
+                unsafe {
+                    val ^= *buttons.get_unchecked(idx as usize);
+                }
+                temp &= temp.wrapping_sub(1);
             }
 
-            if val == machine_config.target && i.count_ones() < best_count {
-                best_count = i.count_ones();
+            if val == target {
+                res += i.count_ones();
+                break;
             }
         }
-
-        res += best_count;
     }
-
     res
 }
 

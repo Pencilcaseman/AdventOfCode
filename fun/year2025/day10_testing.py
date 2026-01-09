@@ -338,6 +338,43 @@ def part2():
     return total
 
 
+def gosper(limit):
+    # Iterate over the number of set bits (k)
+    # limit.bit_length() gives the number of bits in the limit
+    for k in range(1, limit.bit_length() + 1):
+        # Start with the smallest integer with k bits set
+        # e.g., for k=3, this is 000...0111 (7)
+        x = (1 << k) - 1
+
+        while x < limit:
+            yield x
+
+            # Gosper's Hack to get the next number with k bits set
+            c = x & -x
+            r = x + c
+            # Use // for integer division in Python
+            x = (((r ^ x) >> 2) // c) | r
+
+
+def test(limit, todo):
+    import time
+
+    todo.clear()
+    todo.append((limit, 0))
+
+    index = 0
+    while True:
+        (limit, count) = todo[index]
+
+        print(f"{limit:b}", count)
+
+        for i in range(limit):
+            todo.append((i, count + 1))
+
+        index += 1
+        time.sleep(0.05)
+
+
 def main():
     #
 
@@ -446,6 +483,12 @@ def main():
     print(res)
 
     print(part2())
+
+    for x in gosper(1 << 8):
+        print(f"{x:b}")
+
+    todo = []
+    test(1 << 4, todo)
 
 
 if __name__ == "__main__":
