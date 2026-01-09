@@ -1,63 +1,38 @@
 use crate::util::parse::ParseUnsigned;
 
 const PRESENT_SIZE: u32 = 9;
-const NUM_PRESENTS: usize = 8;
+const NUM_PRESENTS: usize = 6;
 
-#[derive(Debug)]
-pub struct Tree {
-    rows: u32,
-    cols: u32,
-    counts: [u32; NUM_PRESENTS],
-}
-
-type Input = Vec<Tree>;
+type Input = u32;
 
 pub fn parse(input: &str) -> Input {
-    let mut trees = Vec::new();
+    let mut nums = ParseUnsigned::<u8>::new(input.bytes()).skip(NUM_PRESENTS);
 
-    for line in input.lines() {
-        let bytes = line.as_bytes();
-
-        if bytes.len() < 3 || bytes[2] != b'x' {
-            continue;
-        }
-
-        let mut nums = ParseUnsigned::<u8>::new(line.bytes()).map(|x| x as u32);
-
-        let rows = nums.next().unwrap();
-        let cols = nums.next().unwrap();
-
-        let mut counts = [0; NUM_PRESENTS];
-        nums.enumerate().for_each(|(i, n)| counts[i] = n);
-
-        trees.push(Tree { rows, cols, counts });
-    }
-
-    trees
-}
-
-pub fn part1(input: &Input) -> u32 {
     let mut trivial = 0;
 
-    for tree in input {
-        // Presents fit trivially under the tree
-        let rounded_rows = (tree.rows / 3) * 3;
-        let rounded_cols = (tree.cols / 3) * 3;
-        let rounded_area = rounded_rows * rounded_cols;
+    while let Some(width) = nums.next() {
+        let width = (width as u32 / 3) * 3;
+        let height = (nums.next().unwrap() as u32 / 3) * 3;
+        let area = width * height;
 
-        // All presents are 3x3
-        let max_area = PRESENT_SIZE * tree.counts.iter().sum::<u32>();
+        let max_area =
+            nums.by_ref().take(NUM_PRESENTS).map(|x| x as u32).sum::<u32>()
+                * PRESENT_SIZE;
 
-        if max_area <= rounded_area {
-            trivial += 1;
+        if max_area <= area {
+            trivial += 1
         }
     }
 
     trivial
 }
 
-pub fn part2(input: &Input) -> u32 {
-    0
+pub fn part1(input: &Input) -> u32 {
+    *input
+}
+
+pub fn part2(_input: &Input) -> i8 {
+    -1
 }
 
 // Answers for my input:
