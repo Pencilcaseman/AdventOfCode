@@ -1,6 +1,4 @@
-use ndarray::Array2;
-
-use crate::util::parse::grid_to_ndarray;
+use ndarray::{Array2, s};
 
 type Input = (Vec<(usize, usize)>, Array2<u8>);
 
@@ -15,43 +13,107 @@ const OFFSETS: [(usize, usize); 8] = [
     (1, 1),                   // 1 1
 ];
 
-pub fn parse(input: &str) -> Input {
-    let input = grid_to_ndarray(input.bytes());
+fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
+    r: usize,
+    rows: &[&[u8]],
+    out_counts: &mut [u8],
+    todo: &mut Vec<(usize, usize)>,
+) {
+    let cols = rows[0].len();
 
-    let dim = input.dim();
-    let mut todo = Vec::new();
-    let mut count_grid = Array2::<u8>::zeros(dim);
+    let curr = rows[r];
+    let above = if HAS_ABOVE { Some(rows[r - 1]) } else { None };
+    let below = if HAS_BELOW { Some(rows[r + 1]) } else { None };
 
-    let f = |(row, col): (usize, usize)| {
-        OFFSETS
-            .into_iter()
-            .map(|offset| {
-                let pos =
-                    (row.wrapping_add(offset.0), col.wrapping_add(offset.1));
+    let row_offset = r * cols;
+    let counts = &mut out_counts[row_offset..row_offset + cols];
 
-                if pos.0 >= dim.0 || pos.1 >= dim.1 {
-                    0
-                } else {
-                    match input[pos] {
-                        b'@' => 1,
-                        _ => 0,
-                    }
-                }
-            })
-            .sum::<u8>()
-    };
+    // First column
+    if curr[0] == b'@' {
+        let mut sum = (curr[1] == b'@') as u8;
 
-    count_grid.indexed_iter_mut().for_each(|(pos, val)| {
-        if input[pos] == b'@' {
-            *val = f(pos);
-
-            if *val < 4 {
-                todo.push(pos);
-            }
-        } else {
-            *val = u8::MAX;
+        if HAS_ABOVE {
+            let a = above.unwrap();
+            sum += (a[0] == b'@') as u8 + (a[1] == b'@') as u8;
         }
-    });
+        if HAS_BELOW {
+            let b = below.unwrap();
+            sum += (b[0] == b'@') as u8 + (b[1] == b'@') as u8;
+        }
+
+        counts[0] = sum;
+
+        if sum < 4 {
+            todo.push((r, 0));
+        }
+    }
+
+    // Middle columns
+    for c in 1..(cols - 1) {
+        if curr[c] != b'@' {
+            continue;
+        }
+
+        let mut sum = (curr[c - 1] == b'@') as u8 + (curr[c + 1] == b'@') as u8;
+
+        if HAS_ABOVE {
+            let a = above.unwrap();
+            sum += (a[c - 1] == b'@') as u8
+                + (a[c] == b'@') as u8
+                + (a[c + 1] == b'@') as u8;
+        }
+
+        if HAS_BELOW {
+            let b = below.unwrap();
+            sum += (b[c - 1] == b'@') as u8
+                + (b[c] == b'@') as u8
+                + (b[c + 1] == b'@') as u8;
+        }
+
+        counts[c] = sum;
+        if sum < 4 {
+            todo.push((r, c));
+        }
+    }
+
+    // Final column
+    let last = cols - 1;
+    if curr[last] == b'@' {
+        let mut sum = (curr[last - 1] == b'@') as u8;
+
+        if HAS_ABOVE {
+            let a = above.unwrap();
+            sum += (a[last - 1] == b'@') as u8 + (a[last] == b'@') as u8;
+        }
+        if HAS_BELOW {
+            let b = below.unwrap();
+            sum += (b[last - 1] == b'@') as u8 + (b[last] == b'@') as u8;
+        }
+
+        counts[last] = sum;
+        if sum < 4 {
+            todo.push((r, last));
+        }
+    }
+}
+
+pub fn parse(input: &str) -> (Vec<(usize, usize)>, Array2<u8>) {
+    let lines: Vec<&[u8]> = input.lines().map(|l| l.as_bytes()).collect();
+
+    let rows = lines.len();
+    let cols = lines[0].len();
+
+    let mut count_data = vec![u8::MAX; rows * cols];
+    let mut todo = Vec::new();
+
+    process_row::<false, true>(0, &lines, &mut count_data, &mut todo);
+    for r in 1..(rows - 1) {
+        process_row::<true, true>(r, &lines, &mut count_data, &mut todo);
+    }
+    process_row::<true, false>(rows - 1, &lines, &mut count_data, &mut todo);
+
+    let count_grid =
+        unsafe { Array2::from_shape_vec_unchecked((rows, cols), count_data) };
 
     (todo, count_grid)
 }
