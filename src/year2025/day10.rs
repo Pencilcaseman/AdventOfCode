@@ -1,4 +1,4 @@
-use num::Integer;
+use num::{Integer, PrimInt};
 use rayon::prelude::*;
 use smallvec::SmallVec;
 
@@ -13,42 +13,34 @@ pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
 }
 
-// pub fn part1(input: &Input) -> u32 {
-//     input
-//         .par_iter()
-//         .map(|machine_config| {
-//             let num_buttons = machine_config.buttons.len();
-//
-//             let mut best = u32::MAX;
-//
-//             for presses in 0u32..(1 << num_buttons) {
-//                 let mut config = 0;
-//
-//                 for bit in 0..num_buttons {
-//                     if (presses & (1 << bit)) != 0 {
-//                         config ^= machine_config.buttons[bit];
-//                     }
-//                 }
-//
-//                 if config == machine_config.target
-//                     && presses.count_ones() < best.count_ones()
-//                 {
-//                     best = presses;
-//                 }
-//             }
-//
-//             best.count_ones()
-//         })
-//         .sum()
-// }
+pub fn part1(input: &Input) -> u32 {
+    let mut res = 0;
 
-pub fn part1(_input: &Input) -> u32 {
-    0
+    for machine_config in input {
+        let mut best_count = u32::MAX;
+
+        let i_max = 1 << machine_config.buttons.len();
+
+        for i in 0..i_max {
+            let mut val = 0;
+
+            for idx in BitIterator::new(i) {
+                val ^= machine_config.buttons[idx];
+            }
+
+            if val == machine_config.target && i.count_ones() < best_count {
+                best_count = i.count_ones();
+            }
+        }
+
+        res += best_count;
+    }
+
+    res
 }
 
 pub fn part2(input: &Input) -> i32 {
     input
-        // .iter()
         .par_iter()
         .map(|machine_config| {
             full_solve(&machine_config.buttons, &machine_config.joltage)
@@ -315,10 +307,10 @@ fn gen_matrix<const N: usize>(
 
     for col in 0..cols {
         for toggle in BitIterator::new(buttons[col]) {
-            mat[toggle as usize][col] = 1i32;
+            mat[toggle][col] = 1i32;
 
-            if (joltage[toggle as usize]) < upper_bounds[col] {
-                upper_bounds[col] = joltage[toggle as usize];
+            if (joltage[toggle]) < upper_bounds[col] {
+                upper_bounds[col] = joltage[toggle];
             }
         }
     }
@@ -370,7 +362,7 @@ where
         } else {
             let tz = self.t.trailing_zeros() as usize;
             self.t = self.t ^ (T::one() << tz);
-            Some(tz as usize)
+            Some(tz)
         }
     }
 }
