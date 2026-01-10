@@ -169,7 +169,7 @@ fn find_free_variables<const N: usize, const M: usize>(
     let mut free = SmallVec::new();
     let mut col = 0;
 
-    for row in rref_mat.mat {
+    for row in &rref_mat.mat {
         while col < cols && row[col] == 0 {
             free.push(col);
             col += 1
@@ -274,7 +274,8 @@ fn recurse<const N: usize, const M: usize>(
         if coef > 0 {
             upper_bound = upper_bound.min(target / coef);
         } else {
-            lower_bound = lower_bound.max(target / coef);
+            // lower_bound = lower_bound.max(target / coef);
+            lower_bound = lower_bound.max((target + coef + 1) / coef);
         }
 
         if upper_bound < lower_bound {
