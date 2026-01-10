@@ -96,16 +96,18 @@ fn solve_lights(target: u32, buttons: &[u32], width: usize) -> u32 {
 
     // Find particular solution
     let particular_solution = (0..rank).fold(0, |p_sol, row| {
-        let mask = 1 << row;
-        p_sol ^ if target & mask == 0 { 0 } else { presses[row] }
+        let pivot_bit = 1 << reduced[row].trailing_zeros();
+        let p = if target & pivot_bit == 0 { 0 } else { presses[row] };
+        p_sol ^ p
     });
 
     println!("Particular solution = {particular_solution:b}");
 
-    let best = (0..(1 << nullity) - 1)
+    let best = (0..(1 << nullity))
         .map(|null| {
-            println!("{rank} + {null} = {}", rank + null);
-            (particular_solution ^ presses[rank + null]).count_ones()
+            BitIterator::new(null)
+                .fold(particular_solution, |p, i| p ^ presses[rank + i])
+                .count_ones()
         })
         .min()
         .unwrap_or(particular_solution);
