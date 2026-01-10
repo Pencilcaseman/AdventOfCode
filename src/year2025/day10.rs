@@ -30,9 +30,7 @@ pub fn part1(input: &Input) -> u32 {
 
             while temp != 0 {
                 let idx = temp.trailing_zeros();
-                unsafe {
-                    val ^= *buttons.get_unchecked(idx as usize);
-                }
+                val ^= buttons[idx as usize];
                 temp &= temp.wrapping_sub(1);
             }
 
@@ -98,7 +96,9 @@ impl MachineConfig {
             .collect();
 
         let joltage: Vec<_> =
-            ParseSigned::<i32>::new(segments[number_seg_end].bytes()).collect();
+            ParseUnsigned::<u32>::new(segments[number_seg_end].bytes())
+                .map(|x| x as i32)
+                .collect();
 
         Some(Self { target: toggle_target, buttons: number_segs, joltage })
     }
@@ -122,7 +122,10 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
     let mut col = 0;
 
     while row < rows && col < cols {
-        let Some(pivot_row) = (row..rows).find(|&r| mat.mat[r][col] != 0)
+        // Pick the smallest coefficient to get better RREF reductions
+        let Some(pivot_row) = (row..rows)
+            .filter(|&r| mat.mat[r][col] != 0)
+            .min_by_key(|&r| mat.mat[r][col].abs())
         else {
             col += 1;
             continue;
