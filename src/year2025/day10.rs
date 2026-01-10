@@ -26,7 +26,8 @@ pub fn part1(input: &Input) -> u32 {
 
 pub fn part2(input: &Input) -> i32 {
     input
-        .par_iter()
+        // .par_iter()
+        .iter()
         .map(|machine_config| {
             full_solve(&machine_config.buttons, &machine_config.joltage)
                 .unwrap()
@@ -174,6 +175,53 @@ fn scale_row<const N: usize>(mat: &mut [[i32; N]; N], i: usize, alpha: i32) {
     mat[i].iter_mut().for_each(|x| *x *= alpha);
 }
 
+// fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
+//     let rows = mat.rows;
+//     let cols = mat.cols;
+//
+//     let mut row = 0;
+//     let mut col = 0;
+//
+//     while row < rows && col < cols {
+//         // Pick the smallest coefficient to get better RREF reductions
+//         let Some(pivot_row) = (row..rows)
+//             .filter(|&r| mat.mat[r][col] != 0)
+//             .min_by_key(|&r| mat.mat[r][col].abs())
+//         else {
+//             col += 1;
+//             continue;
+//         };
+//
+//         swap_rows(&mut mat.mat, pivot_row, row);
+//
+//         if mat.mat[row][col] < 0 {
+//             scale_row(&mut mat.mat, row, -1);
+//         }
+//
+//         // Scale by LCM so all elements are divisible
+//         // Remove row from remaining rows if possible
+//
+//         for r in 0..rows {
+//             let coef = mat.mat[r][col];
+//             let pivot_val = mat.mat[row][col];
+//
+//             if r != row && coef != 0 {
+//                 let lcm = pivot_val.lcm(&coef);
+//
+//                 let scale_dst = lcm / coef;
+//                 let scale_src = lcm / pivot_val;
+//
+//                 (0..=cols).for_each(|c| {
+//                     mat.mat[r][c] =
+//                         mat.mat[r][c] * scale_dst - mat.mat[row][c] *
+// scale_src;                 });
+//             }
+//         }
+//
+//         row += 1;
+//     }
+// }
+
 fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
     let rows = mat.rows;
     let cols = mat.cols;
@@ -197,22 +245,15 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
             scale_row(&mut mat.mat, row, -1);
         }
 
-        // Scale by LCM so all elements are divisible
-        // Remove row from remaining rows if possible
-
         for r in 0..rows {
             let coef = mat.mat[r][col];
             let pivot_val = mat.mat[row][col];
 
             if r != row && coef != 0 {
-                let lcm = pivot_val.lcm(&coef);
-
-                let scale_dst = lcm / coef;
-                let scale_src = lcm / pivot_val;
+                scale_row(&mut mat.mat, r, pivot_val);
 
                 (0..=cols).for_each(|c| {
-                    mat.mat[r][c] =
-                        mat.mat[r][c] * scale_dst - mat.mat[row][c] * scale_src;
+                    mat.mat[r][c] -= mat.mat[row][c] * coef;
                 });
             }
         }
