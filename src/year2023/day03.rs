@@ -11,6 +11,7 @@ enum Item {
     Gear,
 }
 
+#[must_use] 
 pub fn parse(input: &str) -> Vec<(usize, usize)> {
     let mut grid: Vec<Option<Item>> = vec![None; input.len()];
 
@@ -51,8 +52,8 @@ pub fn parse(input: &str) -> Vec<(usize, usize)> {
                 let shift = r * line_length as i32 + c;
                 let new = (index as i32).wrapping_add(shift) as usize;
 
-                if new < grid.len() {
-                    if let Some(Item::Number(n)) = grid[new] {
+                if new < grid.len()
+                    && let Some(Item::Number(n)) = grid[new] {
                         if res.0 == 0 {
                             res.0 = n;
                         } else if n != res.0 {
@@ -60,7 +61,6 @@ pub fn parse(input: &str) -> Vec<(usize, usize)> {
                             break;
                         }
                     }
-                }
             }
 
             if res.0 != 0 {
@@ -72,10 +72,12 @@ pub fn parse(input: &str) -> Vec<(usize, usize)> {
     result
 }
 
+#[must_use] 
 pub fn part1(input: &[(usize, usize)]) -> usize {
     input.iter().map(|(a, b)| a + b).sum()
 }
 
+#[must_use] 
 pub fn part2(input: &[(usize, usize)]) -> usize {
     input.iter().map(|(a, b)| a * b).sum()
 }

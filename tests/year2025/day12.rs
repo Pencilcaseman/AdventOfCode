@@ -1,6 +1,6 @@
-use aoc::year2025::day12::*;
+// use aoc::year2025::day12::*;
 
-const EXAMPLE_INPUT: &str = "\
+const _EXAMPLE_INPUT: &str = "\
 0:
 ###
 ##.
@@ -37,7 +37,7 @@ const EXAMPLE_INPUT: &str = "\
 
 #[test]
 fn test_part1() {
-    let input = parse(EXAMPLE_INPUT);
     // The example is hard, but the real input is trivial :)
+    // let input = parse(EXAMPLE_INPUT);
     // assert_eq!(part1(&input), 2);
 }

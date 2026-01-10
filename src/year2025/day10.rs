@@ -2,10 +2,7 @@ use num::Integer;
 use rayon::prelude::*;
 use smallvec::SmallVec;
 
-use crate::util::{
-    iter::HammingBitIter,
-    parse::{ParseSigned, ParseUnsigned},
-};
+use crate::util::{iter::HammingBitIter, parse::ParseUnsigned};
 
 type Input = Vec<MachineConfig>;
 
