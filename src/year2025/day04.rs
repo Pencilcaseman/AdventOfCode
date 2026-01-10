@@ -1,4 +1,4 @@
-use ndarray::{Array2, s};
+use ndarray::Array2;
 
 type Input = (Vec<(usize, usize)>, Array2<u8>);
 

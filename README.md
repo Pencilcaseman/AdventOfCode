@@ -16,6 +16,9 @@ For each question, put your input file in `input/year${YEAR}/day${DAY}.txt`
 Additionally, replace `run` in the above commands with `test` or `bench` for
 tests and benchmarks respectively.
 
+**NOTE:** You may want to pass `--quiet` to the benchmarking program for
+cleaner results. For example: `cargo bench -- year2025::day10 --quiet`.
+
 ## Solution Information
 
 Many solutions do not have an in-depth explanation. In these cases, the
