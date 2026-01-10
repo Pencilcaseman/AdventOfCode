@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use num::Integer;
 use rayon::prelude::*;
 use smallvec::SmallVec;
@@ -13,31 +14,101 @@ pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
 }
 
+// pub fn part1(input: &Input) -> u32 {
+//     let mut res = 0;
+//
+//     for machine_config in input {
+//         let i_max = 1 << machine_config.buttons.len();
+//         let buttons = &machine_config.buttons;
+//         let target = machine_config.target;
+//
+//         for i in HammingBitIter::new(i_max) {
+//             let mut val = 0;
+//             let mut temp = i;
+//
+//             while temp != 0 {
+//                 let idx = temp.trailing_zeros();
+//                 val ^= buttons[idx as usize];
+//                 temp &= temp.wrapping_sub(1);
+//             }
+//
+//             if val == target {
+//                 res += i.count_ones();
+//                 break;
+//             }
+//         }
+//     }
+//     res
+// }
+
 pub fn part1(input: &Input) -> u32 {
-    let mut res = 0;
+    input
+        .iter()
+        .map(|m| solve_lights(m.target, &m.buttons, m.joltage.len()))
+        .sum()
+}
 
-    for machine_config in input {
-        let i_max = 1 << machine_config.buttons.len();
-        let buttons = &machine_config.buttons;
-        let target = machine_config.target;
+fn solve_lights(target: u32, buttons: &[u32], width: usize) -> u32 {
+    // TODO: Branchless?
 
-        for i in HammingBitIter::new(i_max) {
-            let mut val = 0;
-            let mut temp = i;
+    let len = buttons.len();
 
-            while temp != 0 {
-                let idx = temp.trailing_zeros();
-                val ^= buttons[idx as usize];
-                temp &= temp.wrapping_sub(1);
-            }
+    let mut reduced = [0u32; MAX_PROBLEM_SIZE];
+    let mut presses = [0u32; MAX_PROBLEM_SIZE];
 
-            if val == target {
-                res += i.count_ones();
-                break;
+    // Initialize reduced and presses
+    for (i, &button) in buttons.iter().enumerate() {
+        reduced[i] = button;
+        presses[i] = 1 << i;
+    }
+
+    // Convert reduced row echelon format with bitwise operations
+    let mut rank = 0;
+    for col in 0..width {
+        // Find pivot
+        let mask = 1 << col;
+
+        let Some(pivot_idx) = (rank..len).find(|&i| reduced[i] & mask != 0)
+        else {
+            continue;
+        };
+
+        reduced.swap(rank, pivot_idx);
+        presses.swap(rank, pivot_idx);
+
+        for j in 0..buttons.len() {
+            if j != rank && reduced[j] & mask != 0 {
+                // Eliminate
+                reduced[j] ^= reduced[rank];
+                presses[j] ^= presses[rank];
             }
         }
+
+        rank += 1;
     }
-    res
+
+    let nullity = len - rank;
+
+    for (mask, press) in reduced.iter().zip(presses).take(buttons.len()) {
+        println!("{mask:0>6b} : {press:0>6b}");
+    }
+    println!("Nullity = {nullity}");
+
+    // Find particular solution
+    let particular_solution = (0..rank).fold(0, |p_sol, row| {
+        p_sol ^ if target & reduced[row] == 0 { 0 } else { presses[row] }
+    });
+
+    println!("Particular solution = {particular_solution:b}");
+
+    let best = (0..(1 << nullity))
+        .map(|null| (particular_solution ^ presses[rank + null]).count_ones())
+        .min()
+        .unwrap();
+
+    println!("best = {best}");
+
+    best
 }
 
 pub fn part2(input: &Input) -> i32 {
