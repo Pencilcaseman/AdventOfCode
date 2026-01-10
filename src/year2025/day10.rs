@@ -24,11 +24,72 @@ pub fn part1(input: &Input) -> u32 {
         .sum()
 }
 
+pub fn part2(input: &Input) -> i32 {
+    input
+        .par_iter()
+        .map(|machine_config| {
+            full_solve(&machine_config.buttons, &machine_config.joltage)
+                .unwrap()
+        })
+        .sum()
+}
+
+#[derive(Clone)]
+pub struct MachineConfig {
+    target: u32,
+    buttons: Vec<u32>,
+    joltage: Vec<i32>,
+}
+
+pub struct ProblemMatrix<const N: usize> {
+    mat: [[i32; N]; N],
+    rows: usize,
+    cols: usize,
+}
+
 #[derive(Default)]
 struct WorkingSpace {
     reduced: [u32; MAX_PROBLEM_SIZE],
     presses: [u32; MAX_PROBLEM_SIZE],
     pivots: [u32; MAX_PROBLEM_SIZE],
+}
+
+impl std::fmt::Debug for MachineConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "MachineConfig {{ target: {:b}, buttons: (", self.target)?;
+        for b in &self.buttons {
+            write!(f, "{b:?} ")?;
+        }
+        write!(f, "), joltage: {:?} }}", self.joltage)
+    }
+}
+
+impl MachineConfig {
+    fn new(conf: &str) -> Option<MachineConfig> {
+        let mut segments = conf.split_ascii_whitespace();
+
+        let target = segments
+            .next()
+            .unwrap()
+            .bytes()
+            .skip(1)
+            .enumerate()
+            .fold(0, |toggle, (i, b)| toggle | ((b == b'#') as u32) << i);
+
+        let joltage: Vec<_> =
+            ParseUnsigned::<u32>::new(segments.next_back().unwrap().bytes())
+                .map(|x| x as i32)
+                .collect();
+
+        let buttons: Vec<_> = segments
+            .map(|s| {
+                ParseUnsigned::<u8>::new(s.bytes())
+                    .fold(0, |button, b| button | (1 << b))
+            })
+            .collect();
+
+        Some(Self { target, buttons, joltage })
+    }
 }
 
 fn solve_lights(
@@ -101,67 +162,6 @@ fn solve_lights(
         })
         .min()
         .unwrap()
-}
-
-pub fn part2(input: &Input) -> i32 {
-    input
-        .par_iter()
-        .map(|machine_config| {
-            full_solve(&machine_config.buttons, &machine_config.joltage)
-                .unwrap()
-        })
-        .sum()
-}
-
-#[derive(Clone)]
-pub struct MachineConfig {
-    target: u32,
-    buttons: Vec<u32>,
-    joltage: Vec<i32>,
-}
-
-pub struct ProblemMatrix<const N: usize> {
-    mat: [[i32; N]; N],
-    rows: usize,
-    cols: usize,
-}
-
-impl std::fmt::Debug for MachineConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "MachineConfig {{ target: {:b}, buttons: (", self.target)?;
-        for b in &self.buttons {
-            write!(f, "{b:?} ")?;
-        }
-        write!(f, "), joltage: {:?} }}", self.joltage)
-    }
-}
-
-impl MachineConfig {
-    fn new(conf: &str) -> Option<MachineConfig> {
-        let mut segments = conf.split_ascii_whitespace();
-
-        let target = segments
-            .next()
-            .unwrap()
-            .bytes()
-            .skip(1)
-            .enumerate()
-            .fold(0, |toggle, (i, b)| toggle | ((b == b'#') as u32) << i);
-
-        let joltage: Vec<_> =
-            ParseUnsigned::<u32>::new(segments.next_back().unwrap().bytes())
-                .map(|x| x as i32)
-                .collect();
-
-        let buttons: Vec<_> = segments
-            .map(|s| {
-                ParseUnsigned::<u8>::new(s.bytes())
-                    .fold(0, |button, b| button | (1 << b))
-            })
-            .collect();
-
-        Some(Self { target, buttons, joltage })
-    }
 }
 
 fn swap_rows<const N: usize>(mat: &mut [[i32; N]; N], i: usize, j: usize) {
