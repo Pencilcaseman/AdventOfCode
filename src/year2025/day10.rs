@@ -1,9 +1,8 @@
-use itertools::Itertools;
 use num::Integer;
 use rayon::prelude::*;
 use smallvec::SmallVec;
 
-use crate::util::{iter::HammingBitIter, parse::ParseUnsigned};
+use crate::util::parse::ParseUnsigned;
 
 type Input = Vec<MachineConfig>;
 
@@ -139,29 +138,29 @@ impl std::fmt::Debug for MachineConfig {
 
 impl MachineConfig {
     fn new(conf: &str) -> Option<MachineConfig> {
-        let segments: Vec<_> = conf.split_ascii_whitespace().collect();
+        let mut segments = conf.split_ascii_whitespace();
 
-        let number_seg_end = segments.len() - 1;
-
-        let toggle_target = segments[0][1..]
+        let target = segments
+            .next()
+            .unwrap()
             .bytes()
+            .skip(1)
             .enumerate()
             .fold(0, |toggle, (i, b)| toggle | ((b == b'#') as u32) << i);
 
-        let number_segs: Vec<_> = segments[1..number_seg_end]
-            .iter()
+        let joltage: Vec<_> =
+            ParseUnsigned::<u32>::new(segments.next_back().unwrap().bytes())
+                .map(|x| x as i32)
+                .collect();
+
+        let buttons: Vec<_> = segments
             .map(|s| {
-                ParseUnsigned::<u32>::new(s.bytes())
+                ParseUnsigned::<u8>::new(s.bytes())
                     .fold(0, |button, b| button | (1 << b))
             })
             .collect();
 
-        let joltage: Vec<_> =
-            ParseUnsigned::<u32>::new(segments[number_seg_end].bytes())
-                .map(|x| x as i32)
-                .collect();
-
-        Some(Self { target: toggle_target, buttons: number_segs, joltage })
+        Some(Self { target, buttons, joltage })
     }
 }
 
