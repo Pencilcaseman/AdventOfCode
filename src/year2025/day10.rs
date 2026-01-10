@@ -175,102 +175,66 @@ fn scale_row<const N: usize>(mat: &mut [[i32; N]; N], i: usize, alpha: i32) {
     mat[i].iter_mut().for_each(|x| *x *= alpha);
 }
 
-// fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
-//     let rows = mat.rows;
-//     let cols = mat.cols;
-//
-//     let mut row = 0;
-//     let mut col = 0;
-//
-//     while row < rows && col < cols {
-//         // Pick the smallest coefficient to get better RREF reductions
-//         let Some(pivot_row) = (row..rows)
-//             .filter(|&r| mat.mat[r][col] != 0)
-//             .min_by_key(|&r| mat.mat[r][col].abs())
-//         else {
-//             col += 1;
-//             continue;
-//         };
-//
-//         swap_rows(&mut mat.mat, pivot_row, row);
-//
-//         if mat.mat[row][col] < 0 {
-//             scale_row(&mut mat.mat, row, -1);
-//         }
-//
-//         // Scale by LCM so all elements are divisible
-//         // Remove row from remaining rows if possible
-//
-//         for r in 0..rows {
-//             let coef = mat.mat[r][col];
-//             let pivot_val = mat.mat[row][col];
-//
-//             if r != row && coef != 0 {
-//                 let lcm = pivot_val.lcm(&coef);
-//
-//                 let scale_dst = lcm / coef;
-//                 let scale_src = lcm / pivot_val;
-//
-//                 (0..=cols).for_each(|c| {
-//                     mat.mat[r][c] =
-//                         mat.mat[r][c] * scale_dst - mat.mat[row][c] *
-// scale_src;                 });
-//             }
-//         }
-//
-//         row += 1;
-//     }
-// }
-
 fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
     let rows = mat.rows;
     let cols = mat.cols;
 
-    let mut row = 0;
-    let mut col = 0;
+    let mut rank = 0;
+    let mut last = cols;
 
-    while row < rows && col < cols {
+    while rank < rows && rank < last {
         // Pick the smallest coefficient to get better RREF reductions
-        let Some(pivot_row) = (row..rows)
-            .filter(|&r| mat.mat[r][col] != 0)
-            .min_by_key(|&r| mat.mat[r][col].abs())
-        else {
-            col += 1;
-            continue;
-        };
+        if let Some(pivot_row) = (rank..rows)
+            .filter(|&r| mat.mat[r][rank] != 0)
+            .min_by_key(|&r| mat.mat[r][rank].abs())
+        {
+            swap_rows(&mut mat.mat, pivot_row, rank);
 
-        swap_rows(&mut mat.mat, pivot_row, row);
-
-        if mat.mat[row][col] < 0 {
-            scale_row(&mut mat.mat, row, -1);
-        }
-
-        for r in 0..rows {
-            let coef = mat.mat[r][col];
-            let pivot_val = mat.mat[row][col];
-
-            if r != row && coef != 0 {
-                scale_row(&mut mat.mat, r, pivot_val);
-
-                (0..=cols).for_each(|c| {
-                    mat.mat[r][c] -= mat.mat[row][c] * coef;
-                });
+            if mat.mat[rank][rank] < 0 {
+                scale_row(&mut mat.mat, rank, -1);
             }
+
+            for r in 0..rows {
+                let coef = mat.mat[r][rank];
+                let pivot_val = mat.mat[rank][rank];
+
+                if r != rank && coef != 0 {
+                    scale_row(&mut mat.mat, r, pivot_val);
+
+                    (0..=cols).for_each(|c| {
+                        mat.mat[r][c] -= mat.mat[rank][c] * coef;
+                    });
+                }
+            }
+
+            rank += 1;
+        } else {
+            // Move the `last` variable (last column) to the front instead of
+            // skipping a column. This way all free variables are guaranteed to
+            // be at the end of the matrix
+            last -= 1;
+            mat.mat[..rows + 1].iter_mut().for_each(|row| row.swap(rank, last));
         }
 
-        row += 1;
+        // mat.mat.iter().for_each(|r| println!("{r:?}"));
+        // println!();
     }
+
+    // let nullity = cols - col;
+    // println!("nullity = {nullity}");
+    // todo!()
 }
 
 fn find_free_variables<const N: usize, const M: usize>(
     rref_mat: &ProblemMatrix<N>,
 ) -> SmallVec<usize, M> {
+    let rows = rref_mat.rows;
     let cols = rref_mat.cols;
 
     let mut free = SmallVec::new();
     let mut col = 0;
 
-    for row in &rref_mat.mat {
+    for row in &rref_mat.mat[..rows] {
         while col < cols && row[col] == 0 {
             free.push(col);
             col += 1
@@ -334,10 +298,10 @@ fn solve_with_attempt<const N: usize, const M: usize>(
 fn recurse<const N: usize, const M: usize>(
     rref_mat: &ProblemMatrix<N>,
     free_vars: &SmallVec<usize, M>,
-    upper_bounds: &[i32],
     assignment: &mut SmallVec<i32, M>,
     depth: usize,
 ) -> Option<i32> {
+    let rows = rref_mat.rows;
     let cols = rref_mat.cols;
 
     if assignment.len() == free_vars.len() {
@@ -347,9 +311,9 @@ fn recurse<const N: usize, const M: usize>(
     let free_col_idx = free_vars[depth];
 
     let mut lower_bound = 0;
-    let mut upper_bound = upper_bounds[free_vars[depth]];
+    let mut upper_bound = rref_mat.mat[rows][free_vars[depth]];
 
-    for row in rref_mat.mat {
+    for row in &rref_mat.mat[..rows] {
         let mut target = row[cols];
         let coef = row[free_col_idx];
 
@@ -368,14 +332,13 @@ fn recurse<const N: usize, const M: usize>(
             }
 
             if c != free_col_idx && row[c] < 0 {
-                target -= row[c] * upper_bounds[c];
+                target -= row[c] * rref_mat.mat[rows][c];
             }
         }
 
         if coef > 0 {
             upper_bound = upper_bound.min(target / coef);
         } else {
-            // lower_bound = lower_bound.max(target / coef);
             lower_bound = lower_bound.max((target + coef + 1) / coef);
         }
 
@@ -390,9 +353,7 @@ fn recurse<const N: usize, const M: usize>(
     for b in lower_bound..=upper_bound {
         assignment[depth] = b;
 
-        if let Some(new) =
-            recurse(rref_mat, free_vars, upper_bounds, assignment, depth + 1)
-        {
+        if let Some(new) = recurse(rref_mat, free_vars, assignment, depth + 1) {
             best = best.min(new);
         }
     }
@@ -404,43 +365,40 @@ fn recurse<const N: usize, const M: usize>(
 fn gen_matrix<const N: usize>(
     buttons: &[u32],
     joltage: &[i32],
-) -> (ProblemMatrix<N>, Vec<i32>) {
+) -> ProblemMatrix<N> {
     let rows = joltage.len();
     let cols = buttons.len();
 
     let mut mat = [[0; N]; N];
-
-    let mut upper_bounds = vec![2048i32; cols];
 
     for i in 0..rows {
         mat[i][cols] = joltage[i];
     }
 
     for col in 0..cols {
+        let mut limit = i32::MAX;
+
         for toggle in BitIterator::new(buttons[col]) {
             mat[toggle][col] = 1i32;
 
-            if (joltage[toggle]) < upper_bounds[col] {
-                upper_bounds[col] = joltage[toggle];
-            }
+            limit = limit.min(joltage[toggle]);
         }
+
+        mat[rows][col] = limit;
     }
 
-    let problem_matrix = ProblemMatrix { mat, rows, cols };
-
-    (problem_matrix, upper_bounds)
+    ProblemMatrix { mat, rows, cols }
 }
 
 fn full_solve(buttons: &[u32], joltage: &[i32]) -> Option<i32> {
-    let (mut matrix, upper_bounds) =
-        gen_matrix::<MAX_PROBLEM_SIZE>(buttons, joltage);
+    let mut matrix = gen_matrix::<MAX_PROBLEM_SIZE>(buttons, joltage);
 
     rref(&mut matrix);
     let free_vars =
         find_free_variables::<MAX_PROBLEM_SIZE, MAX_FREE_VARS>(&matrix);
 
     let mut assignment = SmallVec::<i32, MAX_FREE_VARS>::new();
-    recurse(&matrix, &free_vars, &upper_bounds, &mut assignment, 0)
+    recurse(&matrix, &free_vars, &mut assignment, 0)
 }
 
 // From https://github.com/maneatingape/advent-of-code-rust/blob/main/src/util/bitset.rs
