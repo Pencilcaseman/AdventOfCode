@@ -14,33 +14,6 @@ pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
 }
 
-// pub fn part1(input: &Input) -> u32 {
-//     let mut res = 0;
-//
-//     for machine_config in input {
-//         let i_max = 1 << machine_config.buttons.len();
-//         let buttons = &machine_config.buttons;
-//         let target = machine_config.target;
-//
-//         for i in HammingBitIter::new(i_max) {
-//             let mut val = 0;
-//             let mut temp = i;
-//
-//             while temp != 0 {
-//                 let idx = temp.trailing_zeros();
-//                 val ^= buttons[idx as usize];
-//                 temp &= temp.wrapping_sub(1);
-//             }
-//
-//             if val == target {
-//                 res += i.count_ones();
-//                 break;
-//             }
-//         }
-//     }
-//     res
-// }
-
 pub fn part1(input: &Input) -> u32 {
     input
         .iter()
@@ -89,11 +62,6 @@ fn solve_lights(target: u32, buttons: &[u32], width: usize) -> u32 {
 
     let nullity = len - rank;
 
-    for (mask, press) in reduced.iter().zip(presses).take(buttons.len()) {
-        println!("{mask:0>6b} : {press:0>6b}");
-    }
-    println!("Nullity = {nullity}");
-
     // Find particular solution
     let particular_solution = (0..rank).fold(0, |p_sol, row| {
         let pivot_bit = 1 << reduced[row].trailing_zeros();
@@ -101,20 +69,14 @@ fn solve_lights(target: u32, buttons: &[u32], width: usize) -> u32 {
         p_sol ^ p
     });
 
-    println!("Particular solution = {particular_solution:b}");
-
-    let best = (0..(1 << nullity))
+    (0..(1 << nullity))
         .map(|null| {
             BitIterator::new(null)
                 .fold(particular_solution, |p, i| p ^ presses[rank + i])
                 .count_ones()
         })
         .min()
-        .unwrap_or(particular_solution);
-
-    println!("best = {best}");
-
-    best
+        .unwrap()
 }
 
 pub fn part2(input: &Input) -> i32 {
