@@ -27,7 +27,7 @@ type Input = (u32, u32);
 type BucketThreadEdge = Vec<Vec<Vec<(u64, u16, u16)>>>;
 
 const NUM_BUCKETS: usize = 8;
-const DIST_MAGNITUDE: u64 = 15_000 * 15_000;
+const DIST_MAGNITUDE: u64 = 15000 * 15000;
 
 pub fn parse(input: &str) -> Input {
     solve(ParseUnsigned::<u32>::new(input.bytes()).tuples().collect(), 1000)
@@ -75,26 +75,24 @@ pub fn solve(input: Vec<(u32, u32, u32)>, steps: usize) -> (u32, u32) {
     let buckets = parallel_load(&input);
     let mut iter = flatten(&buckets);
 
-    let mut dsu_parents: Vec<_> = (0..input.len()).collect();
+    let mut dsu_parents: Vec<_> = (0..input.len() as u16).collect();
     let mut dsu_counts = vec![1; input.len()];
 
     for (_, i, j) in iter.by_ref().take(steps) {
-        let (i, j) = (i as usize, j as usize);
         dsu_merge(&mut dsu_parents, &mut dsu_counts, i, j);
     }
 
     let mut counts = dsu_counts.clone();
-    counts.sort_unstable();
+    counts.par_sort_unstable();
     let part1: u32 = counts.into_iter().rev().take(3).product();
 
     let mut part2 = 0;
 
     for (_, i, j) in iter {
-        let (i, j) = (i as usize, j as usize);
         if dsu_merge(&mut dsu_parents, &mut dsu_counts, i, j)
             == input.len() as u32
         {
-            part2 = input[i].0 * input[j].0;
+            part2 = input[i as usize].0 * input[j as usize].0;
             break;
         }
     }
@@ -120,35 +118,30 @@ fn flatten(
     })
 }
 
-fn dsu_find(parents: &mut [usize], mut i: usize) -> usize {
-    while parents[i] != i {
-        let parent = parents[i];
-        parents[i] = parents[parent];
+fn dsu_find(parents: &mut [u16], mut i: u16) -> u16 {
+    while parents[i as usize] != i {
+        let parent = parents[i as usize];
+        parents[i as usize] = parents[parent as usize];
         i = parent;
     }
 
     i
 }
 
-fn dsu_merge(
-    parents: &mut [usize],
-    counts: &mut [u32],
-    i: usize,
-    j: usize,
-) -> u32 {
+fn dsu_merge(parents: &mut [u16], counts: &mut [u32], i: u16, j: u16) -> u32 {
     let mut parent_i = dsu_find(parents, i);
     let mut parent_j = dsu_find(parents, j);
 
     if parent_i != parent_j {
-        if counts[parent_i] > counts[parent_j] {
+        if counts[parent_i as usize] > counts[parent_j as usize] {
             (parent_i, parent_j) = (parent_j, parent_i);
         }
 
-        counts[parent_j] += counts[parent_i];
-        parents[parent_i] = parent_j;
+        counts[parent_j as usize] += counts[parent_i as usize];
+        parents[parent_i as usize] = parent_j;
     }
 
-    counts[parent_j]
+    counts[parent_j as usize]
 }
 
 // Answers for my input:
