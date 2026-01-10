@@ -15,19 +15,34 @@ pub fn parse(input: &str) -> Input {
 }
 
 pub fn part1(input: &Input) -> u32 {
+    let mut working = WorkingSpace::default();
+
     input
         .iter()
-        .map(|m| solve_lights(m.target, &m.buttons, m.joltage.len()))
+        .map(|m| {
+            solve_lights(m.target, &m.buttons, m.joltage.len(), &mut working)
+        })
         .sum()
 }
 
-fn solve_lights(target: u32, buttons: &[u32], width: usize) -> u32 {
-    // TODO: Branchless?
+#[derive(Default)]
+struct WorkingSpace {
+    reduced: [u32; MAX_PROBLEM_SIZE],
+    presses: [u32; MAX_PROBLEM_SIZE],
+    pivots: [u32; MAX_PROBLEM_SIZE],
+}
 
+fn solve_lights(
+    target: u32,
+    buttons: &[u32],
+    width: usize,
+    working: &mut WorkingSpace,
+) -> u32 {
     let len = buttons.len();
 
-    let mut reduced = [0u32; MAX_PROBLEM_SIZE];
-    let mut presses = [0u32; MAX_PROBLEM_SIZE];
+    let reduced = &mut working.reduced[..len];
+    let presses = &mut working.presses[..len];
+    let pivots = &mut working.pivots[..len];
 
     // Initialize reduced and presses
     for (i, &button) in buttons.iter().enumerate() {
@@ -46,15 +61,25 @@ fn solve_lights(target: u32, buttons: &[u32], width: usize) -> u32 {
             continue;
         };
 
+        pivots[rank] = mask;
+
         reduced.swap(rank, pivot_idx);
         presses.swap(rank, pivot_idx);
 
-        for j in 0..buttons.len() {
-            if j != rank && reduced[j] & mask != 0 {
-                // Eliminate
-                reduced[j] ^= reduced[rank];
-                presses[j] ^= presses[rank];
-            }
+        let pivot_r = reduced[rank];
+        let pivot_p = presses[rank];
+
+        // Skip j == rank
+        // Doing it this way gives a 25% performance improvement, strangely
+        for j in 0..rank {
+            let m = 0u32.wrapping_sub(((reduced[j] & mask) != 0) as u32);
+            reduced[j] ^= pivot_r & m;
+            presses[j] ^= pivot_p & m;
+        }
+        for j in (rank + 1)..len {
+            let m = 0u32.wrapping_sub(((reduced[j] & mask) != 0) as u32);
+            reduced[j] ^= pivot_r & m;
+            presses[j] ^= pivot_p & m;
         }
 
         rank += 1;
@@ -64,11 +89,11 @@ fn solve_lights(target: u32, buttons: &[u32], width: usize) -> u32 {
 
     // Find particular solution
     let particular_solution = (0..rank).fold(0, |p_sol, row| {
-        let pivot_bit = 1 << reduced[row].trailing_zeros();
-        let p = if target & pivot_bit == 0 { 0 } else { presses[row] };
-        p_sol ^ p
+        let m = 0u32.wrapping_sub((target & pivots[row] != 0) as u32);
+        p_sol ^ presses[row] & m
     });
 
+    // Try all combinations of free variables
     (0..(1 << nullity))
         .map(|null| {
             BitIterator::new(null)
