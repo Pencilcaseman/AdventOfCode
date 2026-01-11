@@ -1,13 +1,13 @@
+use std::array::from_fn;
+
 use num::Integer;
 use rayon::prelude::*;
-use smallvec::SmallVec;
 
 use crate::util::parse::ParseUnsigned;
 
 type Input = Vec<MachineConfig>;
 
 const MAX_PROBLEM_SIZE: usize = 16;
-const MAX_FREE_VARS: usize = 4;
 
 pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
@@ -175,7 +175,7 @@ fn scale_row<const N: usize>(mat: &mut [[i32; N]; N], i: usize, alpha: i32) {
     mat[i].iter_mut().for_each(|x| *x *= alpha);
 }
 
-fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
+fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
     let rows = mat.rows;
     let cols = mat.cols;
 
@@ -183,7 +183,7 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
     let mut last = cols;
 
     while rank < rows && rank < last {
-        // Pick the smallest coefficient to get better RREF reductions
+        // Pick the smallest coefficient to keep coefficients small
         if let Some(pivot_row) = (rank..rows)
             .filter(|&r| mat.mat[r][rank] != 0)
             .min_by_key(|&r| mat.mat[r][rank].abs())
@@ -215,151 +215,174 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) {
             last -= 1;
             mat.mat[..rows + 1].iter_mut().for_each(|row| row.swap(rank, last));
         }
-
-        // mat.mat.iter().for_each(|r| println!("{r:?}"));
-        // println!();
     }
 
-    // let nullity = cols - col;
-    // println!("nullity = {nullity}");
-    // todo!()
-}
+    // Useful variables
+    // - rank
+    // - nullity
+    // - rhs (targets) -- sum = presses so far
+    // - particular solution
+    // - limits (max values)
+    // - free variables
+    // - cost per free variable = sum of column
 
-fn find_free_variables<const N: usize, const M: usize>(
-    rref_mat: &ProblemMatrix<N>,
-) -> SmallVec<usize, M> {
-    let rows = rref_mat.rows;
-    let cols = rref_mat.cols;
-
-    let mut free = SmallVec::new();
-    let mut col = 0;
-
-    for row in &rref_mat.mat[..rows] {
-        while col < cols && row[col] == 0 {
-            free.push(col);
-            col += 1
-        }
-
-        col += 1
+    // Pivot coefficients are not necessarily 1, so find LCM and scale rows
+    // accordingly
+    let lcm = (0..rank).fold(1, |lcm, r| mat.mat[r][r].lcm(&lcm));
+    for (pivot_idx, row) in mat.mat[..rank].iter_mut().enumerate() {
+        let scale = lcm / row[pivot_idx];
+        row[pivot_idx..cols + 1].iter_mut().for_each(|v| *v *= scale);
     }
 
-    free.extend(col..cols);
+    mat.mat.iter().for_each(|r| println!("{r:?}"));
 
-    free
+    let nullity = cols - rank;
+
+    let rhs: [_; N] = from_fn(|row| mat.mat[row][cols]);
+    let particular_solution: i32 = rhs[..rank].iter().sum();
+
+    let free_vars: Vec<_> = (0..nullity)
+        .map(|null| {
+            let vector = from_fn(|row| mat.mat[row][rank + null]);
+            let limit = mat.mat[rows][rank + null];
+            let cost = lcm - vector[..rank].iter().sum::<i32>();
+
+            FreeVariable::<N> { vector, limit, cost }
+        })
+        .collect();
+
+    ResultThing { rank, nullity, lcm, particular_solution, free_vars, rhs }
 }
 
-fn solve_with_attempt<const N: usize, const M: usize>(
-    rref_mat: &ProblemMatrix<N>,
-    free_vars: &SmallVec<usize, M>,
-    assignment: &SmallVec<i32, M>,
+// TODO: Come up with a better name
+struct ResultThing<const N: usize> {
+    rank: usize,
+    nullity: usize,
+    lcm: i32,
+    particular_solution: i32,
+    free_vars: Vec<FreeVariable<N>>,
+    rhs: [i32; N],
+}
+
+struct FreeVariable<const N: usize> {
+    vector: [i32; N],
+    limit: i32,
+    cost: i32,
+}
+
+fn recurse<const N: usize>(
+    rank: usize,
+    free_vars: &[FreeVariable<N>],
+    mut rhs: [i32; N],
+    lcm: i32,
+    mut remaining: u32,
+    presses: i32,
 ) -> Option<i32> {
-    let rows = rref_mat.rows;
-    let cols = rref_mat.cols;
-
-    let mut row = 0;
-    let mut col = 0;
-
-    let mut total: i32 = assignment.iter().sum();
-
-    while row < rows && col < cols {
-        let mat_row = &rref_mat.mat[row];
-
-        while col < cols && mat_row[col] == 0 {
-            col += 1;
-        }
-
-        if col >= cols {
-            continue;
-        }
-
-        let mut target = mat_row[cols];
-        for i in 0..assignment.len() {
-            target -= mat_row[free_vars[i]] * assignment[i];
-        }
-
-        if !target.is_multiple_of(&mat_row[col]) {
-            return None;
-        }
-
-        let presses = target / mat_row[col];
-
-        if presses < 0 {
-            return None;
-        }
-
-        total += presses;
-
-        row += 1
+    if free_vars.is_empty() {
+        return Some(presses / lcm);
     }
 
-    Some(total)
-}
+    let mut tmp_rhs = rhs;
 
-fn recurse<const N: usize, const M: usize>(
-    rref_mat: &ProblemMatrix<N>,
-    free_vars: &SmallVec<usize, M>,
-    assignment: &mut SmallVec<i32, M>,
-    depth: usize,
-) -> Option<i32> {
-    let rows = rref_mat.rows;
-    let cols = rref_mat.cols;
-
-    if assignment.len() == free_vars.len() {
-        return solve_with_attempt(rref_mat, free_vars, assignment);
-    }
-
-    let free_col_idx = free_vars[depth];
-
-    let mut lower_bound = 0;
-    let mut upper_bound = rref_mat.mat[rows][free_vars[depth]];
-
-    for row in &rref_mat.mat[..rows] {
-        let mut target = row[cols];
-        let coef = row[free_col_idx];
-
-        if coef == 0 {
-            continue;
-        }
-
-        let mut assigned_idx = 0;
-
-        for c in 0..cols {
-            if assigned_idx < depth && c == free_vars[assigned_idx] {
-                target -=
-                    row[free_vars[assigned_idx]] * assignment[assigned_idx];
-                assigned_idx += 1;
-                continue;
+    // Negative coefficients allow for infinite solutions. Fortunately, the
+    // variables are bounded so we can offset by the maximum possible value and
+    // only search that space
+    for i in BitIterator::new(remaining) {
+        let var = &free_vars[i];
+        tmp_rhs[..rank].iter_mut().zip(var.vector).for_each(|(r, v)| {
+            if v < 0 {
+                *r -= v * var.limit;
             }
+        })
+    }
 
-            if c != free_col_idx && row[c] < 0 {
-                target -= row[c] * rref_mat.mat[rows][c];
+    // Find variable with largest range
+    let mut best_lower = 0;
+    let mut best_upper = i32::MIN;
+    let mut best_idx = usize::MAX;
+    let mut smallest_size = i32::MAX;
+
+    for i in BitIterator::new(remaining) {
+        let var = &free_vars[i];
+
+        let mut lower = 0;
+        let mut upper = var.limit;
+
+        for (&v, rhs) in var.vector[..rank].iter().zip(&tmp_rhs) {
+            if v > 0 {
+                upper = upper.min(rhs / v);
+            } else if v < 0 {
+                // Attempting to solve for this var, so undo the offset by
+                // `lower` from earlier
+                let tmp_rhs_val = rhs + v * var.limit;
+                lower = lower.max((tmp_rhs_val + v + 1) / v);
             }
         }
 
-        if coef > 0 {
-            upper_bound = upper_bound.min(target / coef);
-        } else {
-            lower_bound = lower_bound.max((target + coef + 1) / coef);
-        }
+        // Inclusive -- [lower, upper]
+        let size = upper - lower + 1;
 
-        if upper_bound < lower_bound {
-            return None;
-        }
-    }
-
-    let mut best = i32::MAX;
-
-    assignment.push(0);
-    for b in lower_bound..=upper_bound {
-        assignment[depth] = b;
-
-        if let Some(new) = recurse(rref_mat, free_vars, assignment, depth + 1) {
-            best = best.min(new);
+        if size > 0 && size < smallest_size {
+            smallest_size = size;
+            best_lower = lower;
+            best_upper = upper;
+            best_idx = i;
         }
     }
-    assignment.pop();
 
-    if best == i32::MAX { None } else { Some(best) }
+    if best_idx == usize::MAX {
+        return None;
+    }
+
+    // Remove selected variable
+    remaining ^= 1 << best_idx;
+
+    let best_var = &free_vars[best_idx];
+
+    if remaining != 0 {
+        // Same as above -- reduce search space by lower bound
+        rhs[..rank]
+            .iter_mut()
+            .zip(best_var.vector)
+            .for_each(|(r, v)| *r -= v * best_lower);
+
+        (best_lower..=best_upper)
+            .filter_map(|f| {
+                let total = recurse(
+                    rank,
+                    free_vars,
+                    rhs,
+                    lcm,
+                    remaining,
+                    presses + f * best_var.cost,
+                );
+
+                // f is 0, 1, 2, ...
+                // so rhs decreases by 1 * v each time
+                rhs[..rank]
+                    .iter_mut()
+                    .zip(&best_var.vector)
+                    .for_each(|(r, v)| *r -= v);
+
+                total
+            })
+            .min()
+    } else {
+        // Solve
+        (best_lower..=best_upper)
+            .filter_map(|f| {
+                let total_presses = presses + f * best_var.cost;
+
+                // Check if result is integer
+                let is_integer = rhs[..rank]
+                    .iter()
+                    .zip(best_var.vector)
+                    .all(|(r, v)| (r - f * v).is_multiple_of(&lcm));
+
+                if is_integer { Some(total_presses / lcm) } else { None }
+            })
+            .min()
+    }
 }
 
 fn gen_matrix<const N: usize>(
@@ -393,12 +416,12 @@ fn gen_matrix<const N: usize>(
 fn full_solve(buttons: &[u32], joltage: &[i32]) -> Option<i32> {
     let mut matrix = gen_matrix::<MAX_PROBLEM_SIZE>(buttons, joltage);
 
-    rref(&mut matrix);
-    let free_vars =
-        find_free_variables::<MAX_PROBLEM_SIZE, MAX_FREE_VARS>(&matrix);
+    let ResultThing { rank, nullity, lcm, particular_solution, free_vars, rhs } =
+        rref(&mut matrix);
 
-    let mut assignment = SmallVec::<i32, MAX_FREE_VARS>::new();
-    recurse(&matrix, &free_vars, &mut assignment, 0)
+    let remaining = (1 << free_vars.len()) - 1;
+
+    recurse(rank, &free_vars, rhs, lcm, remaining, particular_solution)
 }
 
 // From https://github.com/maneatingape/advent-of-code-rust/blob/main/src/util/bitset.rs
