@@ -7,7 +7,7 @@ pub fn parse(input: &str) -> Input {
     let mut graph = vec![vec![]; MAX_NODES];
 
     for line in input.lines() {
-        let mut iter = line.split_ascii_whitespace();
+        let mut iter = line.split_ascii_whitespace().map(str::as_bytes);
         let from = encode(&iter.next().unwrap()[..3]);
         graph[from].extend(iter.map(encode));
     }
@@ -16,30 +16,30 @@ pub fn parse(input: &str) -> Input {
 }
 
 pub fn part1(input: &Input) -> u64 {
-    num_paths(input, "you", "out")
+    num_paths(input, b"you", b"out")
 }
 
 pub fn part2(input: &Input) -> u64 {
-    let fft_to_dac = num_paths(input, "fft", "dac");
+    let fft_to_dac = num_paths(input, b"fft", b"dac");
 
     if fft_to_dac != 0 {
         // fft comes before dac
-        num_paths(input, "svr", "fft")
+        num_paths(input, b"svr", b"fft")
             * fft_to_dac
-            * num_paths(input, "dac", "out")
+            * num_paths(input, b"dac", b"out")
     } else {
         // dac comes before fft
-        num_paths(input, "svr", "dac")
-            * num_paths(input, "dac", "fft")
-            * num_paths(input, "fft", "out")
+        num_paths(input, b"svr", b"dac")
+            * num_paths(input, b"dac", b"fft")
+            * num_paths(input, b"fft", b"out")
     }
 }
 
-fn encode(node: &str) -> usize {
-    node.bytes().fold(0, |p, c| (c - b'a') as usize + 26 * p)
+fn encode(node: &[u8]) -> usize {
+    node.iter().fold(0, |p, c| (c - b'a') as usize + 26 * p)
 }
 
-pub fn num_paths(input: &Input, src: &str, dst: &str) -> u64 {
+pub fn num_paths(input: &Input, src: &[u8], dst: &[u8]) -> u64 {
     let mut cache = vec![u64::MAX; MAX_NODES];
     dfs(input, encode(src), encode(dst), &mut cache)
 }
