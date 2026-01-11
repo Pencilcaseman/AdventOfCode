@@ -7,7 +7,7 @@ use crate::util::parse::ParseUnsigned;
 
 type Input = Vec<MachineConfig>;
 
-const MAX_PROBLEM_SIZE: usize = 16;
+const MAX_PROBLEM_SIZE: usize = 14;
 
 pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
@@ -165,19 +165,10 @@ fn solve_lights(
         .unwrap()
 }
 
-fn swap_rows<const N: usize>(mat: &mut [[i32; N]; N], i: usize, j: usize) {
-    if i != j {
-        mat.swap(i, j);
-    }
-}
-
-fn scale_row<const N: usize>(mat: &mut [[i32; N]; N], i: usize, alpha: i32) {
-    mat[i].iter_mut().for_each(|x| *x *= alpha);
-}
-
 fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
-    let rows = mat.rows;
-    let cols = mat.cols;
+    let ProblemMatrix { mat, rows, cols } = mat;
+    let rows = *rows;
+    let cols = *cols;
 
     let mut rank = 0;
     let mut last = cols;
@@ -185,24 +176,22 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
     while rank < rows && rank < last {
         // Pick the smallest coefficient to keep coefficients small
         if let Some(pivot_row) = (rank..rows)
-            .filter(|&r| mat.mat[r][rank] != 0)
-            .min_by_key(|&r| mat.mat[r][rank].abs())
+            .filter(|&r| mat[r][rank] != 0)
+            .min_by_key(|&r| mat[r][rank].abs())
         {
-            swap_rows(&mut mat.mat, pivot_row, rank);
+            mat.swap(pivot_row, rank);
 
-            if mat.mat[rank][rank] < 0 {
-                scale_row(&mut mat.mat, rank, -1);
+            if mat[rank][rank] < 0 {
+                mat[rank][rank..cols + 1].iter_mut().for_each(|x| *x *= -1);
             }
 
             for r in 0..rows {
-                let coef = mat.mat[r][rank];
-                let pivot_val = mat.mat[rank][rank];
+                let coef = mat[r][rank];
+                let pivot_val = mat[rank][rank];
 
                 if r != rank && coef != 0 {
-                    scale_row(&mut mat.mat, r, pivot_val);
-
-                    (0..=cols).for_each(|c| {
-                        mat.mat[r][c] -= mat.mat[rank][c] * coef;
+                    (0..cols + 1).for_each(|c| {
+                        mat[r][c] = mat[r][c] * pivot_val - mat[rank][c] * coef;
                     });
                 }
             }
@@ -213,55 +202,43 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
             // skipping a column. This way all free variables are guaranteed to
             // be at the end of the matrix
             last -= 1;
-            mat.mat[..rows + 1].iter_mut().for_each(|row| row.swap(rank, last));
+            mat[..rows + 1].iter_mut().for_each(|row| row.swap(rank, last));
         }
     }
 
-    // Useful variables
-    // - rank
-    // - nullity
-    // - rhs (targets) -- sum = presses so far
-    // - particular solution
-    // - limits (max values)
-    // - free variables
-    // - cost per free variable = sum of column
-
     // Pivot coefficients are not necessarily 1, so find LCM and scale rows
     // accordingly
-    let lcm = (0..rank).fold(1, |lcm, r| mat.mat[r][r].lcm(&lcm));
-    for (pivot_idx, row) in mat.mat[..rank].iter_mut().enumerate() {
+    let lcm = (0..rank).fold(1, |lcm, r| mat[r][r].lcm(&lcm));
+    for (pivot_idx, row) in mat[..rank].iter_mut().enumerate() {
         let scale = lcm / row[pivot_idx];
         row[pivot_idx..cols + 1].iter_mut().for_each(|v| *v *= scale);
     }
 
-    mat.mat.iter().for_each(|r| println!("{r:?}"));
-
     let nullity = cols - rank;
 
-    let rhs: [_; N] = from_fn(|row| mat.mat[row][cols]);
+    let rhs: [_; N] = from_fn(|row| mat[row][cols]);
     let particular_solution: i32 = rhs[..rank].iter().sum();
 
     let free_vars: Vec<_> = (0..nullity)
         .map(|null| {
-            let vector = from_fn(|row| mat.mat[row][rank + null]);
-            let limit = mat.mat[rows][rank + null];
+            let vector = from_fn(|row| mat[row][rank + null]);
+            let limit = mat[rows][rank + null];
             let cost = lcm - vector[..rank].iter().sum::<i32>();
 
             FreeVariable::<N> { vector, limit, cost }
         })
         .collect();
 
-    ResultThing { rank, nullity, lcm, particular_solution, free_vars, rhs }
+    ResultThing { rank, lcm, particular_solution, rhs, free_vars }
 }
 
 // TODO: Come up with a better name
 struct ResultThing<const N: usize> {
     rank: usize,
-    nullity: usize,
     lcm: i32,
     particular_solution: i32,
-    free_vars: Vec<FreeVariable<N>>,
     rhs: [i32; N],
+    free_vars: Vec<FreeVariable<N>>,
 }
 
 struct FreeVariable<const N: usize> {
@@ -271,10 +248,10 @@ struct FreeVariable<const N: usize> {
 }
 
 fn recurse<const N: usize>(
-    rank: usize,
     free_vars: &[FreeVariable<N>],
-    mut rhs: [i32; N],
+    rank: usize,
     lcm: i32,
+    mut rhs: [i32; N],
     mut remaining: u32,
     presses: i32,
 ) -> Option<i32> {
@@ -349,10 +326,10 @@ fn recurse<const N: usize>(
         (best_lower..=best_upper)
             .filter_map(|f| {
                 let total = recurse(
-                    rank,
                     free_vars,
-                    rhs,
+                    rank,
                     lcm,
+                    rhs,
                     remaining,
                     presses + f * best_var.cost,
                 );
@@ -394,20 +371,19 @@ fn gen_matrix<const N: usize>(
 
     let mut mat = [[0; N]; N];
 
-    for i in 0..rows {
-        mat[i][cols] = joltage[i];
-    }
-
     for col in 0..cols {
         let mut limit = i32::MAX;
 
         for toggle in BitIterator::new(buttons[col]) {
             mat[toggle][col] = 1i32;
-
             limit = limit.min(joltage[toggle]);
         }
 
         mat[rows][col] = limit;
+    }
+
+    for i in 0..rows {
+        mat[i][cols] = joltage[i];
     }
 
     ProblemMatrix { mat, rows, cols }
@@ -416,12 +392,11 @@ fn gen_matrix<const N: usize>(
 fn full_solve(buttons: &[u32], joltage: &[i32]) -> Option<i32> {
     let mut matrix = gen_matrix::<MAX_PROBLEM_SIZE>(buttons, joltage);
 
-    let ResultThing { rank, nullity, lcm, particular_solution, free_vars, rhs } =
+    let ResultThing { rank, lcm, particular_solution, free_vars, rhs } =
         rref(&mut matrix);
 
     let remaining = (1 << free_vars.len()) - 1;
-
-    recurse(rank, &free_vars, rhs, lcm, remaining, particular_solution)
+    recurse(&free_vars, rank, lcm, rhs, remaining, particular_solution)
 }
 
 // From https://github.com/maneatingape/advent-of-code-rust/blob/main/src/util/bitset.rs
