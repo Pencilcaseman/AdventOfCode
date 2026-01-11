@@ -40,10 +40,16 @@ pub fn part1(input: &Input) -> u64 {
 }
 
 fn max_area(c0: &[(u32, u32)], c1: &[(u32, u32)]) -> u64 {
-    c0.iter()
-        .flat_map(|p0| c1.iter().map(|p1| area(p0.0, p0.1, p1.0, p1.1)))
-        .max()
-        .unwrap()
+    let mut max = 0;
+    for p0 in c0 {
+        for p1 in c1 {
+            let area = area(p0.0, p0.1, p1.0, p1.1);
+            if area > max {
+                max = area;
+            }
+        }
+    }
+    max
 }
 
 fn corners(
@@ -108,18 +114,17 @@ pub fn part2(input: &Input) -> u64 {
         // Update largest rectangle
         // - Valid if candidate interval contains the current position
         // - Check if rectangle is larger than largest previously found
-        for c in &candidates {
+        //
+        // Update candidates:
+        // - If no interval contains the candidate, it is no longer valid
+        candidates.retain_mut(|c| {
             for row in [row0, row1] {
                 if c.interval.contains(row) {
                     max_rect_area =
                         max_rect_area.max(area(c.row, c.col, row, col));
                 }
             }
-        }
 
-        // Update candidates:
-        // - If no interval contains the candidate, it is no longer valid
-        candidates.retain_mut(|c| {
             if let Some(interval) = intervals.iter().find(|i| i.contains(c.row))
             {
                 c.interval = c.interval.intersection(*interval);
