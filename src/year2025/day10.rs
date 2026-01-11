@@ -1,6 +1,6 @@
 use std::array::from_fn;
 
-// use num::Integer;
+use num::Integer;
 use rayon::prelude::*;
 
 use crate::util::parse::ParseUnsigned;
@@ -8,27 +8,6 @@ use crate::util::parse::ParseUnsigned;
 type Input = Vec<MachineConfig>;
 
 const MAX_PROBLEM_SIZE: usize = 14;
-
-pub trait NumberThing {
-    fn gcd(self, b: Self) -> Self;
-    fn lcm(self, b: Self) -> Self;
-}
-
-impl NumberThing for i32 {
-    fn gcd(self, mut b: i32) -> i32 {
-        let mut a = self;
-
-        while b != 0 {
-            (a, b) = (b, a % b);
-        }
-
-        a
-    }
-
-    fn lcm(self, b: i32) -> i32 {
-        self / self.gcd(b) * b
-    }
-}
 
 pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
@@ -49,7 +28,7 @@ pub fn part2(input: &Input) -> i32 {
     input
         .par_iter()
         .map(|machine_config| {
-            full_solve(&machine_config.buttons, &machine_config.joltage)
+            solve_joltages(&machine_config.buttons, &machine_config.joltage)
                 .unwrap()
         })
         .sum()
@@ -229,7 +208,7 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
 
     // Pivot coefficients are not necessarily 1, so find LCM and scale rows
     // accordingly
-    let lcm = (0..rank).fold(1, |lcm, r| mat[r][r].lcm(lcm));
+    let lcm = (0..rank).fold(1, |lcm, r| mat[r][r].lcm(&lcm));
     for (pivot_idx, row) in mat[..rank].iter_mut().enumerate() {
         let scale = lcm / row[pivot_idx];
         row[pivot_idx..cols + 1].iter_mut().for_each(|v| *v *= scale);
@@ -250,12 +229,13 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
         })
         .collect();
 
-    ResultThing { rank, lcm, particular_solution, rhs, free_vars }
+    ResultThing { rank, nullity, lcm, particular_solution, rhs, free_vars }
 }
 
 // TODO: Come up with a better name
 struct ResultThing<const N: usize> {
     rank: usize,
+    nullity: usize,
     lcm: i32,
     particular_solution: i32,
     rhs: [i32; N],
@@ -276,10 +256,6 @@ fn recurse<const N: usize>(
     mut remaining: u32,
     presses: i32,
 ) -> Option<i32> {
-    if free_vars.is_empty() {
-        return Some(presses / lcm);
-    }
-
     let mut tmp_rhs = rhs;
 
     // Negative coefficients allow for infinite solutions. Fortunately, the
@@ -416,13 +392,17 @@ fn gen_matrix<const N: usize>(
     ProblemMatrix { mat, rows, cols }
 }
 
-fn full_solve(buttons: &[u32], joltage: &[i32]) -> Option<i32> {
+fn solve_joltages(buttons: &[u32], joltage: &[i32]) -> Option<i32> {
     let mut matrix = gen_matrix::<MAX_PROBLEM_SIZE>(buttons, joltage);
 
-    let ResultThing { rank, lcm, particular_solution, free_vars, rhs } =
+    let ResultThing { rank, nullity, lcm, particular_solution, free_vars, rhs } =
         rref(&mut matrix);
 
-    let remaining = (1 << free_vars.len()) - 1;
+    if nullity == 0 {
+        return Some(particular_solution / lcm);
+    }
+
+    let remaining = (1 << nullity) - 1;
     recurse(&free_vars, rank, lcm, rhs, remaining, particular_solution)
 }
 
