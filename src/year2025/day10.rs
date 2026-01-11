@@ -1,6 +1,6 @@
 use std::array::from_fn;
 
-use num::Integer;
+// use num::Integer;
 use rayon::prelude::*;
 
 use crate::util::parse::ParseUnsigned;
@@ -8,6 +8,27 @@ use crate::util::parse::ParseUnsigned;
 type Input = Vec<MachineConfig>;
 
 const MAX_PROBLEM_SIZE: usize = 14;
+
+pub trait NumberThing {
+    fn gcd(self, b: Self) -> Self;
+    fn lcm(self, b: Self) -> Self;
+}
+
+impl NumberThing for i32 {
+    fn gcd(self, mut b: i32) -> i32 {
+        let mut a = self;
+
+        while b != 0 {
+            (a, b) = (b, a % b);
+        }
+
+        a
+    }
+
+    fn lcm(self, b: i32) -> i32 {
+        self / self.gcd(b) * b
+    }
+}
 
 pub fn parse(input: &str) -> Input {
     input.lines().map_while(MachineConfig::new).collect()
@@ -26,8 +47,7 @@ pub fn part1(input: &Input) -> u32 {
 
 pub fn part2(input: &Input) -> i32 {
     input
-        // .par_iter()
-        .iter()
+        .par_iter()
         .map(|machine_config| {
             full_solve(&machine_config.buttons, &machine_config.joltage)
                 .unwrap()
@@ -185,9 +205,10 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
                 mat[rank][rank..cols + 1].iter_mut().for_each(|x| *x *= -1);
             }
 
+            let pivot_val = mat[rank][rank];
+
             for r in 0..rows {
                 let coef = mat[r][rank];
-                let pivot_val = mat[rank][rank];
 
                 if r != rank && coef != 0 {
                     (0..cols + 1).for_each(|c| {
@@ -208,7 +229,7 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
 
     // Pivot coefficients are not necessarily 1, so find LCM and scale rows
     // accordingly
-    let lcm = (0..rank).fold(1, |lcm, r| mat[r][r].lcm(&lcm));
+    let lcm = (0..rank).fold(1, |lcm, r| mat[r][r].lcm(lcm));
     for (pivot_idx, row) in mat[..rank].iter_mut().enumerate() {
         let scale = lcm / row[pivot_idx];
         row[pivot_idx..cols + 1].iter_mut().for_each(|v| *v *= scale);
@@ -323,7 +344,7 @@ fn recurse<const N: usize>(
             .zip(best_var.vector)
             .for_each(|(r, v)| *r -= v * best_lower);
 
-        (best_lower..=best_upper)
+        (best_lower..best_upper + 1)
             .filter_map(|f| {
                 let total = recurse(
                     free_vars,
@@ -344,21 +365,27 @@ fn recurse<const N: usize>(
                 total
             })
             .min()
-    } else {
+    } else if best_var.cost > 0 {
         // Solve
-        (best_lower..=best_upper)
-            .filter_map(|f| {
-                let total_presses = presses + f * best_var.cost;
+        (best_lower..best_upper + 1).find_map(|f| {
+            let total_presses = (presses + f * best_var.cost) / lcm;
 
-                // Check if result is integer
-                let is_integer = rhs[..rank]
-                    .iter()
-                    .zip(best_var.vector)
-                    .all(|(r, v)| (r - f * v).is_multiple_of(&lcm));
+            rhs[..rank]
+                .iter()
+                .zip(best_var.vector)
+                .all(|(r, v)| (r - f * v) % lcm == 0)
+                .then_some(total_presses)
+        })
+    } else {
+        (best_lower..best_upper + 1).rev().find_map(|f| {
+            let total_presses = (presses + f * best_var.cost) / lcm;
 
-                if is_integer { Some(total_presses / lcm) } else { None }
-            })
-            .min()
+            rhs[..rank]
+                .iter()
+                .zip(best_var.vector)
+                .all(|(r, v)| (r - f * v) % lcm == 0)
+                .then_some(total_presses)
+        })
     }
 }
 
