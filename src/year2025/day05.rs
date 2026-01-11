@@ -1,10 +1,13 @@
 use itertools::Itertools;
+use smallvec::SmallVec;
 
 use crate::util::parse::ParseUnsigned;
 
 type Range = std::ops::Range<u64>;
 
-type Input = (Vec<Range>, Vec<u64>);
+const SMALL_VEC_SIZE: usize = 128;
+
+type Input = (SmallVec<Range, SMALL_VEC_SIZE>, Vec<u64>);
 
 pub fn parse(input: &str) -> Input {
     let (ranges, nums) = input.split_once("\n\n").unwrap();
@@ -17,16 +20,17 @@ pub fn parse(input: &str) -> Input {
     nums.sort_unstable();
 
     let mut range = 0..0;
-    let mut merged = Vec::new();
+    let mut merged = SmallVec::<_, SMALL_VEC_SIZE>::new();
 
     for (start, end) in ranges {
-        if range.end > start {
+        if range.end >= start {
             range.end = range.end.max(end + 1);
         } else {
             merged.push(range);
             range = start..(end + 1);
         }
     }
+
     merged.push(range);
 
     (merged, nums)
@@ -36,8 +40,8 @@ pub fn part1((ranges, nums): &Input) -> usize {
     ranges
         .iter()
         .map(|r| {
-            let start = nums.binary_search(&r.start).unwrap_or_else(|e| e);
-            let end = nums.binary_search(&r.end).unwrap_or_else(|e| e);
+            let start = nums.partition_point(|&n| n < r.start);
+            let end = nums.partition_point(|&n| n < r.end);
 
             end - start
         })
