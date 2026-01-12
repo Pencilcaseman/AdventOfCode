@@ -27,6 +27,7 @@ type Input = (i32, i32);
 
 pub fn parse(input: &str) -> (i32, i32) {
     let bytes = input.as_bytes();
+    let ptr = bytes.as_ptr();
     let mut i = 0;
 
     let mut p1 = 0;
@@ -49,39 +50,9 @@ pub fn parse(input: &str) -> (i32, i32) {
             let len = end - start;
             debug_assert!(len < 5, "Invalid input");
 
-            // More efficient than looping.
-            // Safe because (in debug mode) we check len is valid
-            let mag = unsafe {
-                match len {
-                    2 => (bytes[start + 1] & 0x0F) as i32,
-                    3 => {
-                        (bytes[start + 1] & 0x0F) as i32 * 10
-                            + (bytes[start + 2] & 0x0F) as i32
-                    }
-                    4 => {
-                        (bytes[start + 1] & 0x0F) as i32 * 100
-                            + (bytes[start + 2] & 0x0F) as i32 * 10
-                            + (bytes[start + 3] & 0x0F) as i32
-                    }
-                    _ => unreachable_unchecked(),
-                }
-            };
-
-            if bytes[start] == b'R' {
-                p2 += (angle + mag) / 100;
-                angle = (angle + mag) % 100;
-            } else {
-                // Treat left as reversed right.
-                let rev_angle = if angle == 0 { 0 } else { 100 - angle };
-                p2 += (rev_angle + mag) / 100;
-
-                angle -= mag;
-                if angle < 0 {
-                    angle = (angle % 100 + 100) % 100;
-                }
+            unsafe {
+                line_solve(ptr, start, len, &mut angle, &mut p1, &mut p2);
             }
-
-            p1 += (angle == 0) as i32;
 
             prev_end = end + 1;
             mask ^= 1 << trailing;
@@ -98,37 +69,9 @@ pub fn parse(input: &str) -> (i32, i32) {
             let len = end - start;
             debug_assert!(len < 5, "Invalid input");
 
-            let mag = unsafe {
-                match len {
-                    2 => (bytes[start + 1] & 0x0F) as i32,
-                    3 => {
-                        (bytes[start + 1] & 0x0F) as i32 * 10
-                            + (bytes[start + 2] & 0x0F) as i32
-                    }
-                    4 => {
-                        (bytes[start + 1] & 0x0F) as i32 * 100
-                            + (bytes[start + 2] & 0x0F) as i32 * 10
-                            + (bytes[start + 3] & 0x0F) as i32
-                    }
-                    _ => unreachable_unchecked(),
-                }
-            };
-
-            if bytes[start] == b'R' {
-                p2 += (angle + mag) / 100;
-                angle = (angle + mag) % 100;
-            } else {
-                // Treat left as reversed right.
-                let rev_angle = if angle == 0 { 0 } else { 100 - angle };
-                p2 += (rev_angle + mag) / 100;
-
-                angle -= mag;
-                if angle < 0 {
-                    angle = (angle % 100 + 100) % 100;
-                }
+            unsafe {
+                line_solve(ptr, start, len, &mut angle, &mut p1, &mut p2);
             }
-
-            p1 += (angle == 0) as i32;
 
             prev_end = end + 1;
         }
@@ -136,6 +79,50 @@ pub fn parse(input: &str) -> (i32, i32) {
     }
 
     (p1, p2)
+}
+
+#[inline(always)]
+unsafe fn line_solve(
+    ptr: *const u8,
+    start: usize,
+    len: usize,
+    angle: &mut i32,
+    p1: &mut i32,
+    p2: &mut i32,
+) {
+    unsafe {
+        // More efficient than looping.
+        // Safe because (in debug mode) we check len is valid
+        let mag = match len {
+            2 => (*ptr.add(start + 1) & 0x0F) as i32,
+            3 => {
+                (*ptr.add(start + 1) & 0x0F) as i32 * 10
+                    + (*ptr.add(start + 2) & 0x0F) as i32
+            }
+            4 => {
+                (*ptr.add(start + 1) & 0x0F) as i32 * 100
+                    + (*ptr.add(start + 2) & 0x0F) as i32 * 10
+                    + (*ptr.add(start + 3) & 0x0F) as i32
+            }
+            _ => unreachable_unchecked(),
+        };
+
+        if *ptr.add(start) == b'R' {
+            *p2 += (*angle + mag) / 100;
+            *angle = (*angle + mag) % 100;
+        } else {
+            // Treat left as reversed right.
+            let rev_angle = if *angle == 0 { 0 } else { 100 - *angle };
+            *p2 += (rev_angle + mag) / 100;
+
+            *angle -= mag;
+            if *angle < 0 {
+                *angle = (*angle % 100 + 100) % 100;
+            }
+        }
+
+        *p1 += (*angle == 0) as i32;
+    }
 }
 
 pub fn part1(input: &Input) -> i32 {
