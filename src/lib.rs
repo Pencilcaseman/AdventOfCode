@@ -4,6 +4,8 @@
 //! and implementation-wise. I've also tried to explain the solutions as best I
 //! can, so anyone struggling can get a better idea of what's going on.
 
+#![feature(portable_simd)]
+
 /// Utility modules to handle common tasks
 pub mod util;
 
