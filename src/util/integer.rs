@@ -78,7 +78,7 @@ pub const POW_10: [u64; 20] = [
 /// integer.
 pub fn num_length(num: u64) -> u8 {
     let mut exp = 0;
-    while exp < POW_10.len() && POW_10[exp] < num {
+    while exp < POW_10.len() && POW_10[exp] <= num {
         exp += 1;
     }
     exp as u8
