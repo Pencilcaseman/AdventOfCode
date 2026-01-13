@@ -20,7 +20,7 @@
 
 use std::{
     hint::unreachable_unchecked,
-    simd::{Simd, cmp::SimdPartialEq, u8x16},
+    simd::{Simd, cmp::SimdPartialEq, u8x64},
 };
 
 type Input = (i32, i32);
@@ -28,6 +28,7 @@ type Input = (i32, i32);
 pub fn parse(input: &str) -> (i32, i32) {
     let bytes = input.as_bytes();
     let ptr = bytes.as_ptr();
+    let len = bytes.len();
     let mut i = 0;
 
     let mut p1 = 0;
@@ -37,8 +38,8 @@ pub fn parse(input: &str) -> (i32, i32) {
     let newline_mask = Simd::splat(b'\n');
     let mut prev_end = 0;
 
-    while i + 16 <= bytes.len() {
-        let chunk = u8x16::from_slice(&bytes[i..]);
+    while i + 64 <= len {
+        let chunk = u8x64::from_slice(&bytes[i..]);
         let eq = chunk.simd_eq(newline_mask);
         let mut mask = eq.to_bitmask();
 
@@ -57,12 +58,12 @@ pub fn parse(input: &str) -> (i32, i32) {
             prev_end = end + 1;
             mask ^= 1 << trailing;
         }
-        i += 16;
+        i += 64;
     }
 
     // Handle remaining elements
-    while i <= bytes.len() {
-        if i == bytes.len() || bytes[i] == b'\n' {
+    while i <= len {
+        if i == len || bytes[i] == b'\n' {
             let start = prev_end;
             let end = i;
 

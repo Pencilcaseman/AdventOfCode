@@ -50,7 +50,7 @@ impl_integer!(u8, u16, i16, u32, i32, u64, i64, u128, i128, usize, isize);
 impl_trait!(Signed, i16, i32, i64, i128, isize);
 impl_trait!(Unsigned, u8, u16, u32, u64, u128, usize);
 
-// Sometimes, it is faster to store a static array than to use ilog10 and/or pow
+// It is often faster to store a static array than to use ilog10 and/or pow
 pub const POW_10: [u64; 20] = [
     1,
     10,
@@ -77,13 +77,11 @@ pub const POW_10: [u64; 20] = [
 /// Returns the number of digits (excluding leading zeros) in an unsigned
 /// integer.
 pub fn num_length(num: u64) -> u8 {
-    for (exp, pow) in POW_10.iter().enumerate() {
-        if num < *pow {
-            return exp as u8;
-        }
+    let mut exp = 0;
+    while exp < POW_10.len() && POW_10[exp] < num {
+        exp += 1;
     }
-
-    0
+    exp as u8
 }
 
 /// Returns $10^exp$ for
