@@ -1,7 +1,7 @@
 use std::simd::{
     Simd,
     cmp::{SimdPartialEq, SimdPartialOrd},
-    u8x16, u8x64,
+    u8x16,
 };
 
 type Input<'a> = &'a str;
@@ -24,8 +24,8 @@ pub fn part1(input: &Input) -> u64 {
 
     let newline_splat = Simd::splat(b'\n');
 
-    while i + 64 < len {
-        let tmp_bytes = u8x64::from_slice(&bytes[i..]);
+    while i + 16 < len {
+        let tmp_bytes = u8x16::from_slice(&bytes[i..]);
         let mut mask = tmp_bytes.simd_eq(newline_splat).to_bitmask();
 
         while mask != 0 {
@@ -44,20 +44,14 @@ pub fn part1(input: &Input) -> u64 {
                 let chunk = u8x16::from_slice(&bytes[start + j - 15..]);
                 let mut gate_kept = chunk.simd_ge(gatekeeper).to_bitmask();
 
-                // Can skip entire chunk
                 while gate_kept != 0 {
-                    // let trailing = gate_kept.trailing_zeros();
-
                     let leading = (gate_kept as u16).leading_zeros();
                     let idx = 15 - leading;
-
-                    // num2 = num2.max(num1);
-                    // num1 = num1.max(chunk[idx as usize]);
 
                     let val = chunk[idx as usize];
                     if val >= num1 {
                         num2 = num2.max(num1);
-                        num1 = val; // We know val >= num1, so val is the new num1
+                        num1 = val;
                     }
 
                     gate_kept ^= 1 << idx;
@@ -71,7 +65,7 @@ pub fn part1(input: &Input) -> u64 {
 
                 if tmp >= num1 {
                     num2 = num2.max(num1);
-                    num1 = num1.max(tmp);
+                    num1 = tmp;
                 }
 
                 j = j.wrapping_sub(1);
@@ -83,7 +77,7 @@ pub fn part1(input: &Input) -> u64 {
             mask ^= 1 << trailing;
         }
 
-        i += 64;
+        i += 16;
     }
 
     while i <= len {
@@ -102,7 +96,7 @@ pub fn part1(input: &Input) -> u64 {
 
                 if tmp >= num1 {
                     num2 = num2.max(num1);
-                    num1 = num1.max(tmp);
+                    num1 = tmp;
                 }
 
                 j = j.wrapping_sub(1);
@@ -136,8 +130,8 @@ pub fn solve<const N: usize>(input: &Input) -> u64 {
 
     let newline_splat = Simd::splat(b'\n');
 
-    while i + 64 < len {
-        let tmp_bytes = u8x64::from_slice(&bytes[i..]);
+    while i + 16 < len {
+        let tmp_bytes = u8x16::from_slice(&bytes[i..]);
         let mut mask = tmp_bytes.simd_eq(newline_splat).to_bitmask();
 
         while mask != 0 {
@@ -200,7 +194,7 @@ pub fn solve<const N: usize>(input: &Input) -> u64 {
             mask ^= 1 << trailing;
         }
 
-        i += 64;
+        i += 16;
     }
 
     while i <= len {
