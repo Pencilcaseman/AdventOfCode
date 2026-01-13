@@ -25,7 +25,7 @@ criterion = { version = "4.1", package = "codspeed-criterion-compat", features =
 [profile.release]
 panic = "abort"
 codegen-units = 1
-lto = true
+lto = "fat"
 opt-level = 3
 strip = true
 debug = false
@@ -35,7 +35,7 @@ debug-assertions = false
 inherits = "release"
 panic = "abort"
 codegen-units = 1
-lto = false
+lto = "thin"
 opt-level = 3
 strip = false
 debug = true

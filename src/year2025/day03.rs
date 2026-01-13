@@ -32,6 +32,11 @@ pub fn part1(input: &Input) -> u64 {
             let trailing = mask.trailing_zeros();
             let end = i + trailing as usize;
 
+            debug_assert!(
+                end - start > 16,
+                "Requires line length to be greater than SIMD register"
+            );
+
             let copy_from = end - 2;
 
             num1 = bytes[end - 2];
@@ -39,7 +44,7 @@ pub fn part1(input: &Input) -> u64 {
 
             let mut j = copy_from - start - 1;
 
-            while j > 16 {
+            while j >= 16 {
                 let gatekeeper = Simd::splat(num1);
                 let chunk = u8x16::from_slice(&bytes[start + j - 15..]);
                 let mut gate_kept = chunk.simd_ge(gatekeeper).to_bitmask();
