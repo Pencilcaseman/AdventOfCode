@@ -1,5 +1,5 @@
 use std::simd::{
-    Simd, SimdCast,
+    Simd,
     cmp::{SimdPartialEq, SimdPartialOrd},
     i8x64,
     num::SimdInt,
@@ -33,11 +33,11 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
     let above = if HAS_ABOVE { Some(rows[r - 1]) } else { None };
     let below = if HAS_BELOW { Some(rows[r + 1]) } else { None };
 
-    let row_offset = r * cols;
+    let row_offset = (r + 1) * (cols + 2) + 1;
     let counts = &mut out_counts[row_offset..row_offset + cols];
 
     // Starting at column 1 and ending at cols - 1
-    let end_simd = if cols > 64 + 2 { cols - 64 - 1 } else { 0 };
+    let end_simd = if cols > 64 + 3 { cols - 64 - 2 } else { 0 };
     let at_splat = Simd::splat(b'@');
 
     // First column (scalar)
@@ -57,7 +57,7 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
         counts[0] = sum;
 
         if sum < 4 {
-            todo.push((r, 0));
+            todo.push((r + 1, 1));
         }
     }
 
@@ -67,6 +67,11 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
         let mask = chunk.simd_eq(at_splat);
 
         let mut acc = i8x64::splat(0);
+
+        let mid_l = Simd::from_slice(&curr[c - 1..]);
+        let mid_r = Simd::from_slice(&curr[c + 1..]);
+        acc -= mid_l.simd_eq(at_splat).to_int();
+        acc -= mid_r.simd_eq(at_splat).to_int();
 
         #[inline(always)]
         fn acc_row(acc: &mut i8x64, slice: &[u8], idx: usize, target: u8x64) {
@@ -80,18 +85,12 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
             *acc -= r.simd_eq(target).to_int();
         }
 
-        let mid_l = Simd::from_slice(&curr[c - 1..]);
-        let mid_r = Simd::from_slice(&curr[c + 1..]);
-        acc -= mid_l.simd_eq(at_splat).to_int();
-        acc -= mid_r.simd_eq(at_splat).to_int();
-
         if HAS_ABOVE {
             unsafe {
                 acc_row(&mut acc, above.unwrap_unchecked(), c, at_splat);
             }
         }
 
-        // -- Bottom Row Neighbors --
         if HAS_BELOW {
             unsafe {
                 acc_row(&mut acc, below.unwrap_unchecked(), c, at_splat);
@@ -109,7 +108,7 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
         let mut todo_mask = (mask & sums.simd_lt(Simd::splat(4))).to_bitmask();
         while todo_mask != 0 {
             let i = todo_mask.trailing_zeros();
-            todo.push((r, c + i as usize));
+            todo.push((r + 1, c + 1 + i as usize));
             todo_mask ^= 1 << i;
         }
 
@@ -140,7 +139,7 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
 
         counts[c] = sum;
         if sum < 4 {
-            todo.push((r, c));
+            todo.push((r + 1, c + 1));
         }
     }
 
@@ -160,18 +159,18 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
 
         counts[last] = sum;
         if sum < 4 {
-            todo.push((r, last));
+            todo.push((r + 1, last + 1));
         }
     }
 }
 
-pub fn parse(input: &str) -> (Vec<(usize, usize)>, Array2<u8>) {
+pub fn parse(input: &str) -> Input {
     let lines: Vec<&[u8]> = input.lines().map(|l| l.as_bytes()).collect();
 
     let rows = lines.len();
     let cols = lines[0].len();
 
-    let mut count_data = vec![u8::MAX; rows * cols];
+    let mut count_data = vec![u8::MAX; (rows + 2) * (cols + 2)];
     let mut todo = Vec::new();
 
     process_row::<false, true>(0, &lines, &mut count_data, &mut todo);
@@ -180,8 +179,9 @@ pub fn parse(input: &str) -> (Vec<(usize, usize)>, Array2<u8>) {
     }
     process_row::<true, false>(rows - 1, &lines, &mut count_data, &mut todo);
 
-    let count_grid =
-        unsafe { Array2::from_shape_vec_unchecked((rows, cols), count_data) };
+    let count_grid = unsafe {
+        Array2::from_shape_vec_unchecked((rows + 2, cols + 2), count_data)
+    };
 
     (todo, count_grid)
 }
@@ -194,8 +194,6 @@ pub fn part2(input: &Input) -> usize {
     let (mut todo, mut count_grid) = input.clone();
     let mut total_removed = 0;
 
-    let dim = count_grid.dim();
-
     while let Some(pos) = todo.pop() {
         total_removed += 1;
 
@@ -203,13 +201,11 @@ pub fn part2(input: &Input) -> usize {
             let new =
                 (pos.0.wrapping_add(offset.0), pos.1.wrapping_add(offset.1));
 
-            if new.0 < dim.0 && new.1 < dim.1 {
-                if count_grid[new] == 4 {
-                    todo.push(new);
-                }
-
-                count_grid[new] -= 1;
+            if count_grid[new] == 4 {
+                todo.push(new);
             }
+
+            count_grid[new] -= 1;
         });
     }
 
