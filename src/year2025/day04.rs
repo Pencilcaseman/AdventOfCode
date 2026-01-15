@@ -182,10 +182,6 @@ pub fn parse(input: &str) -> Input {
         &mut todo,
     );
 
-    // let count_grid = unsafe {
-    //     Array2::from_shape_vec_unchecked((rows + 2, cols + 2), count_data)
-    // };
-
     (todo, count_data, stride)
 }
 
@@ -226,7 +222,9 @@ pub fn part2(input: &Input) -> usize {
                 todo.push(new);
             }
 
-            count_grid[new] -= 1;
+            unsafe {
+                *count_grid.get_unchecked_mut(new) -= 1;
+            }
         });
     }
 
