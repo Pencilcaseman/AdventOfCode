@@ -9,6 +9,7 @@ simd = []
 
 [dependencies]
 atoi = "2.0"
+atoi_simd = "0.18.0"
 clap = { version = "4.5", features = ["derive"] }
 colored = "3.0"
 itertools = "0.14"
