@@ -127,7 +127,6 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
 
         counts[c] = sum;
         if sum < 4 {
-            // todo.push((r + 1, c + 1));
             todo.push((r + 1) * stride + c + 1);
         }
     }
@@ -148,7 +147,6 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
 
         counts[last] = sum;
         if sum < 4 {
-            // todo.push((r + 1, last + 1));
             todo.push((r + 1) * stride + last + 1);
         }
     }

@@ -1,34 +1,6 @@
-use std::{array::from_fn, hint::unreachable_unchecked, simd::prelude::*};
+use std::simd::prelude::*;
 
-use crate::util::parse::ParseUnsigned;
-
-pub enum Op {
-    Sum,
-    Prod,
-}
-
-// type Input<'a> = (Vec<&'a str>, Vec<Op>);
 type Input<'a> = (&'a [u8], usize);
-
-// pub fn parse(input: &'_ str) -> Input<'_> {
-//     let num_lines = input.bytes().filter(|&b| b == b'\n').count() + 1;
-//
-//     let mut lines = input.splitn(num_lines, '\n');
-//
-//     let nums: Vec<&str> = lines.by_ref().take(num_lines - 1).collect();
-//     let ops = lines
-//         .next()
-//         .unwrap()
-//         .bytes()
-//         .filter_map(|b| match b {
-//             b'+' => Some(Op::Sum),
-//             b'*' => Some(Op::Prod),
-//             _ => None,
-//         })
-//         .collect();
-//
-//     (nums, ops)
-// }
 
 pub fn parse(input: &'_ str) -> Input<'_> {
     type SimdType = u8x64;
@@ -61,145 +33,174 @@ pub fn parse(input: &'_ str) -> Input<'_> {
     panic!("No newline found");
 }
 
-// pub fn part1((nums, ops): &Input) -> u64 {
-//     let mut results = vec![0; ops.len()];
-//
-//     for row in nums {
-//         results
-//             .iter_mut()
-//             .zip(ParseUnsigned::<u64>::new(row.bytes()))
-//             .zip(ops.iter())
-//             .for_each(|((result, num), op)| match op {
-//                 Op::Sum => *result += num,
-//                 Op::Prod => {
-//                     if *result == 0 {
-//                         *result = num;
-//                     } else {
-//                         *result *= num;
-//                     }
-//                 }
-//             })
-//     }
-//
-//     results.into_iter().sum()
-// }
-
-pub fn part1((bytes, line_len): &Input) -> u64 {
+pub fn part1(&(bytes, line_len): &Input) -> u64 {
     type SimdType = u8x64;
-    const MAX_NUMS_PER_EQN: usize = 4;
+    const MAX_EQUATIONS: usize = 1024;
 
-    let mut total = 0;
+    let len = bytes.len();
+    let num_number_lines = len / line_len - 1;
 
-    let num_lines = bytes.len() / line_len;
-    let lines_with_nums = num_lines - 1;
-    let ptr = bytes.as_ptr();
+    let op_line = &bytes[num_number_lines * (line_len + 1)..];
+    let mut operators = [0; MAX_EQUATIONS];
+    let mut op_count = 0;
 
-    debug_assert!(
-        lines_with_nums <= MAX_NUMS_PER_EQN,
-        "Too many lines in equation. Increase MAX_NUMS_PER_EQN"
-    );
+    for &b in op_line {
+        if b == b'+' || b == b'*' {
+            if op_count < MAX_EQUATIONS {
+                operators[op_count] = b;
+                op_count += 1;
+            }
+        }
+    }
 
-    // Safety: At most num_lines are valid pointers, but if we never dereference
-    // pointers after that point, this is not unsafe.
-    let line_pointers: [_; MAX_NUMS_PER_EQN] =
-        from_fn(|i| unsafe { ptr.add(i * (line_len + 1)) });
+    let mut results = [0; MAX_EQUATIONS];
+    let mut equation_idx;
 
-    let op_pointer = unsafe { ptr.add((line_len + 1) * lines_with_nums) };
-
-    let mut nums = [0; MAX_NUMS_PER_EQN];
-    let mut i = 0;
-
-    // '0' => 00110000
-    // '1' => 00110001
-    // '2' => 00110010
-    // '3' => 00110011
-    // '4' => 00110100
-    // '5' => 00110101
-    // '6' => 00110110
-    // '7' => 00110111
-    // '8' => 00111000
-    // '9' => 00111001
-    // ' ' => 00100000
-    //
-    // 0x0F => 00001111
-
-    // let hex_mask_splat = SimdType::splat(0x0F);
     let space_splat = SimdType::splat(b' ');
 
-    let mut start = 0;
+    let mut line_idx = 0;
 
-    while i + SimdType::LEN < *line_len {
-        let mut mask = u64::MAX;
+    while line_idx < num_number_lines {
+        let line = &bytes[line_idx * (line_len + 1)..];
 
-        (0..lines_with_nums).for_each(|j| {
-            let chunk = unsafe {
-                line_pointers[j].add(i).cast::<SimdType>().read_unaligned()
-            };
-            mask &= chunk.simd_eq(space_splat).to_bitmask();
-        });
+        let mut start = 0;
+        let mut end;
+        let mut prev_ended_on_0 = false;
+        equation_idx = 0;
 
-        while mask != 0 {
-            let trailing = mask.trailing_zeros() as usize;
-            let end = i + trailing;
+        let mut i = 0;
+        while i + SimdType::LEN < line_len {
+            let chunk = SimdType::from_slice(&line[i..]);
+            let mut mask = chunk.simd_eq(space_splat).to_bitmask();
 
-            for k in 0..lines_with_nums {
-                for j in start..end {
-                    let val = unsafe { *line_pointers[k].add(j) };
+            if mask & 1 != 0 {
+                if prev_ended_on_0 {
+                    // Previous chunk ended on a digit, so we must parse it
 
-                    nums[k] = ((val != b' ') as u64 * 9 + 1) * nums[k]
-                        + (val & 0x0F) as u64;
+                    end = i;
+
+                    let num =
+                        atoi_simd::parse_pos::<u16, false>(&line[start..end])
+                            .unwrap() as u64;
+
+                    if operators[equation_idx] == b'+' {
+                        results[equation_idx] += num;
+                    } else if operators[equation_idx] == b'*' {
+                        if results[equation_idx] == 0 {
+                            results[equation_idx] = num;
+                        } else {
+                            results[equation_idx] *= num;
+                        }
+                    }
+                    equation_idx += 1;
+
+                    start = end;
                 }
+
+                // Clear to first zero
+                let trailing = mask.trailing_ones();
+
+                mask ^= (1 << trailing) - 1;
+                start = start + trailing as usize;
             }
 
-            let op = unsafe { *op_pointer.add(start) };
-            total += match op {
-                b'+' => nums[..lines_with_nums].iter().sum::<u64>(),
-                b'*' => nums[..lines_with_nums].iter().product::<u64>(),
-                _ => unsafe { unreachable_unchecked() },
-            };
+            prev_ended_on_0 = mask & (1 << SimdType::LEN - 1) == 0;
 
-            nums.fill_with(Default::default);
+            while mask != 0 {
+                let trailing = mask.trailing_zeros();
+                end = i + trailing as usize;
 
-            mask ^= 1 << trailing;
+                let num = atoi_simd::parse_pos::<u16, false>(&line[start..end])
+                    .unwrap() as u64;
+
+                if operators[equation_idx] == b'+' {
+                    results[equation_idx] += num;
+                } else if operators[equation_idx] == b'*' {
+                    if results[equation_idx] == 0 {
+                        results[equation_idx] = num;
+                    } else {
+                        results[equation_idx] *= num;
+                    }
+                }
+                equation_idx += 1;
+
+                // Unset first bit
+                mask ^= 1 << trailing;
+
+                // Unset the rest of the 1 bits in this block of spaces.
+                // This allows us to handle multiple spaces (somewhat)
+                // efficiently
+
+                let trailing_ones =
+                    (mask.unbounded_shr(trailing + 1)).trailing_ones();
+                mask ^= (1u64.unbounded_shl(trailing_ones) - 1)
+                    .unbounded_shl(trailing + 1);
+                start = end + trailing_ones as usize + 1;
+            }
+
+            i += SimdType::LEN;
+        }
+
+        // Cases
+        // - Chunk found start but not end
+        // - Chunk found end
+
+        if line[i] == b' ' {
+            if prev_ended_on_0 {
+                // Previous chunk ended on a digit, so we must parse it
+
+                end = i;
+
+                let num = atoi_simd::parse_pos::<u16, false>(&line[start..end])
+                    .unwrap() as u64;
+
+                if operators[equation_idx] == b'+' {
+                    results[equation_idx] += num;
+                } else if operators[equation_idx] == b'*' {
+                    if results[equation_idx] == 0 {
+                        results[equation_idx] = num;
+                    } else {
+                        results[equation_idx] *= num;
+                    }
+                }
+                equation_idx += 1;
+
+                start = end + 1;
+            }
+        }
+
+        while start < line_len {
+            // Skip spaces
+            while line[start] == b' ' {
+                start += 1;
+            }
+
+            let mut end = start + 1;
+            while line[end] != b' ' && line[end] != b'\n' {
+                end += 1;
+            }
+
+            let num = atoi_simd::parse_pos::<u16, false>(&line[start..end])
+                .unwrap() as u64;
+
+            if operators[equation_idx] == b'+' {
+                results[equation_idx] += num;
+            } else if operators[equation_idx] == b'*' {
+                if results[equation_idx] == 0 {
+                    results[equation_idx] = num;
+                } else {
+                    results[equation_idx] *= num;
+                }
+            }
+            equation_idx += 1;
+
             start = end + 1;
         }
 
-        i += SimdType::LEN;
+        line_idx += 1;
     }
 
-    while i <= *line_len {
-        let all_empty = i == *line_len
-            || (0..lines_with_nums)
-                .all(|j| unsafe { *line_pointers[j].add(i) } == b' ');
-
-        if all_empty {
-            let end = i;
-
-            for k in 0..lines_with_nums {
-                for j in start..end {
-                    let val = unsafe { *line_pointers[k].add(j) };
-
-                    nums[k] = ((val != b' ') as u64 * 9 + 1) * nums[k]
-                        + (val & 0x0F) as u64;
-                }
-            }
-
-            let op = unsafe { *op_pointer.add(start) };
-            total += match op {
-                b'+' => nums[..lines_with_nums].iter().sum::<u64>(),
-                b'*' => nums[..lines_with_nums].iter().product::<u64>(),
-                _ => unreachable!(),
-            };
-
-            nums.fill_with(Default::default);
-
-            start = end + 1;
-        }
-
-        i += 1;
-    }
-
-    total
+    results.into_iter().sum()
 }
 
 // pub fn part2((nums, ops): &Input) -> u64 {
