@@ -1,5 +1,5 @@
 use std::simd::{
-    Simd,
+    Select, Simd,
     cmp::{SimdPartialEq, SimdPartialOrd},
     i8x64,
     num::SimdInt,
@@ -58,8 +58,8 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
 
         let mid_l = Simd::from_slice(&curr[c - 1..]);
         let mid_r = Simd::from_slice(&curr[c + 1..]);
-        acc -= mid_l.simd_eq(at_splat).to_int();
-        acc -= mid_r.simd_eq(at_splat).to_int();
+        acc -= mid_l.simd_eq(at_splat).to_simd();
+        acc -= mid_r.simd_eq(at_splat).to_simd();
 
         #[inline(always)]
         fn acc_row(acc: &mut i8x64, slice: &[u8], idx: usize, target: u8x64) {
@@ -68,9 +68,9 @@ fn process_row<const HAS_ABOVE: bool, const HAS_BELOW: bool>(
             let r = Simd::from_slice(&slice[idx + 1..]);
 
             // acc -= (-1) is equivalent to acc += 1
-            *acc -= l.simd_eq(target).to_int();
-            *acc -= m.simd_eq(target).to_int();
-            *acc -= r.simd_eq(target).to_int();
+            *acc -= l.simd_eq(target).to_simd();
+            *acc -= m.simd_eq(target).to_simd();
+            *acc -= r.simd_eq(target).to_simd();
         }
 
         if HAS_ABOVE {
