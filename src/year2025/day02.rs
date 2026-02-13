@@ -49,107 +49,140 @@
 //!
 //! For part one, we can require that $r = 2$.
 
-use std::simd::{Simd, cmp::SimdPartialEq, u8x64};
-
 use crate::util::integer::{num_length, pow10};
 
 type Input = (u64, u64);
 
 const DOUBLE_COUNT_REMOVAL: [i8; 12] = [0, 0, 1, 1, 0, 1, -1, 1, 0, 0, -1, 1];
 
-pub fn parse(input: &str) -> Input {
-    let bytes = input.as_bytes();
-    let ptr = input.as_ptr();
-    let len = bytes.len();
+#[cfg(not(feature = "simd"))]
+mod scalar_solution {
+    use itertools::Itertools;
 
-    let comma_splat = Simd::splat(b',');
-    let hyphen_splat = Simd::splat(b'-');
+    pub use super::*;
+    use crate::util::parse::ParseUnsigned;
 
-    let mut i = 0;
+    pub fn parse(input: &str) -> Input {
+        let mut p1 = 0;
+        let mut p2 = 0;
 
-    let mut p1 = 0;
-    let mut p2 = 0;
+        for vals in ParseUnsigned::new(input.bytes()).tuples::<(u64, u64)>() {
+            let (a1, a2) = single_sum(vals.0 - 1);
+            let (b1, b2) = single_sum(vals.1);
 
-    let mut start = 0;
-
-    let mut num1 = 0;
-    let mut num2 = 0;
-
-    while i + 64 < len {
-        let register = u8x64::from_slice(&bytes[i..]);
-        let mut mask = (register.simd_eq(comma_splat)
-            | register.simd_eq(hyphen_splat))
-        .to_bitmask();
-
-        while mask != 0 {
-            let trailing = mask.trailing_zeros();
-            let end = i + trailing as usize;
-
-            let mut num = 0;
-            for j in start..end {
-                unsafe {
-                    num = num * 10 + (*ptr.add(j) & 0x0F) as u64;
-                }
-            }
-
-            if num1 == 0 {
-                num1 = num;
-            } else if num2 == 0 {
-                num2 = num;
-
-                let (a1, a2) = single_sum(num1 - 1);
-                let (b1, b2) = single_sum(num2);
-
-                p1 += b1 - a1;
-                p2 += b2 - a2;
-
-                num1 = 0;
-                num2 = 0;
-            }
-
-            start = end + 1;
-            mask ^= 1 << trailing;
+            p1 += b1 - a1;
+            p2 += b2 - a2;
         }
 
-        i += 64;
+        (p1, p2)
     }
-
-    while i <= bytes.len() {
-        let next = unsafe { *ptr.add(i) };
-        if i == len || next == b',' || next == b'-' {
-            let end = i;
-
-            let mut num = 0;
-
-            for j in start..end {
-                unsafe {
-                    num = num * 10 + (*ptr.add(j) & 0x0F) as u64;
-                }
-            }
-
-            if num1 == 0 {
-                num1 = num;
-            } else if num2 == 0 {
-                num2 = num;
-
-                let (a1, a2) = single_sum(num1 - 1);
-                let (b1, b2) = single_sum(num2);
-
-                p1 += b1 - a1;
-                p2 += b2 - a2;
-
-                num1 = 0;
-                num2 = 0;
-            }
-
-            start = end + 1;
-        }
-
-        i += 1;
-    }
-
-    (p1, p2)
 }
+
+#[cfg(feature = "simd")]
+mod simd_solution {
+    use std::simd::{Simd, cmp::SimdPartialEq, u8x64};
+
+    pub use super::*;
+
+    pub fn parse(input: &str) -> Input {
+        let bytes = input.as_bytes();
+        let ptr = input.as_ptr();
+        let len = bytes.len();
+
+        let comma_splat = Simd::splat(b',');
+        let hyphen_splat = Simd::splat(b'-');
+
+        let mut i = 0;
+
+        let mut p1 = 0;
+        let mut p2 = 0;
+
+        let mut start = 0;
+
+        let mut num1 = 0;
+        let mut num2 = 0;
+
+        while i + 64 < len {
+            let register = u8x64::from_slice(&bytes[i..]);
+            let mut mask = (register.simd_eq(comma_splat)
+                | register.simd_eq(hyphen_splat))
+            .to_bitmask();
+
+            while mask != 0 {
+                let trailing = mask.trailing_zeros();
+                let end = i + trailing as usize;
+
+                let mut num = 0;
+                for j in start..end {
+                    unsafe {
+                        num = num * 10 + (*ptr.add(j) & 0x0F) as u64;
+                    }
+                }
+
+                if num1 == 0 {
+                    num1 = num;
+                } else if num2 == 0 {
+                    num2 = num;
+
+                    let (a1, a2) = single_sum(num1 - 1);
+                    let (b1, b2) = single_sum(num2);
+
+                    p1 += b1 - a1;
+                    p2 += b2 - a2;
+
+                    num1 = 0;
+                    num2 = 0;
+                }
+
+                start = end + 1;
+                mask ^= 1 << trailing;
+            }
+
+            i += 64;
+        }
+
+        while i <= bytes.len() {
+            let next = unsafe { *ptr.add(i) };
+            if i == len || next == b',' || next == b'-' {
+                let end = i;
+
+                let mut num = 0;
+
+                for j in start..end {
+                    unsafe {
+                        num = num * 10 + (*ptr.add(j) & 0x0F) as u64;
+                    }
+                }
+
+                if num1 == 0 {
+                    num1 = num;
+                } else if num2 == 0 {
+                    num2 = num;
+
+                    let (a1, a2) = single_sum(num1 - 1);
+                    let (b1, b2) = single_sum(num2);
+
+                    p1 += b1 - a1;
+                    p2 += b2 - a2;
+
+                    num1 = 0;
+                    num2 = 0;
+                }
+
+                start = end + 1;
+            }
+
+            i += 1;
+        }
+
+        (p1, p2)
+    }
+}
+
+#[cfg(not(feature = "simd"))]
+pub use scalar_solution::parse;
+#[cfg(feature = "simd")]
+pub use simd_solution::parse;
 
 pub fn part1(input: &Input) -> u64 {
     input.0
