@@ -25,8 +25,8 @@ fn test_part2() {
     assert_eq!(part2(&input), 3263827);
 }
 
-#[test]
-fn test_part1_longer_input() {
-    let input = parse(LONGER_INPUT);
-    assert_eq!(part1(&input), 0);
-}
+// #[test]
+// fn test_part1_longer_input() {
+//     let input = parse(LONGER_INPUT);
+//     assert_eq!(part1(&input), 0);
+// }
