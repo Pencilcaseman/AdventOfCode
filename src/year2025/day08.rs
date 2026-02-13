@@ -6,7 +6,7 @@
 //! To find the MST efficiently, a disjoint set union (DSU) data structure is
 //! used to efficiently check when a circuit contains a junction box. By
 //! simultaneously tracking the size of each circuit, the solutions to part 1
-//! and part 2drop out quite nicely.
+//! and part 2 drop out quite nicely.
 //!
 //! To improve the performance of the code, we split the input across multiple
 //! threads and place edges in buckets according to their approximate length.

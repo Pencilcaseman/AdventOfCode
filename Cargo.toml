@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = []
+default = ["simd"]
 simd = []
 
 [dependencies]
 atoi = "2.0"
-atoi_simd = "0.18.0"
+atoi_simd = "0.18.1"
 clap = { version = "4.5", features = ["derive"] }
 colored = "3.1"
 itertools = "0.14"
@@ -21,7 +21,7 @@ rustc-hash = "2.1"
 smallvec = "2.0.0-alpha.12"
 
 [dev-dependencies]
-criterion = { version = "4.2", package = "codspeed-criterion-compat", features = ["csv_output", "html_reports"] }
+criterion = { version = "4.3", package = "codspeed-criterion-compat", features = ["csv_output", "html_reports"] }
 
 [profile.release]
 panic = "abort"
@@ -36,7 +36,7 @@ debug-assertions = false
 inherits = "release"
 panic = "abort"
 codegen-units = 1
-lto = "thin"
+lto = "fat"
 opt-level = 3
 strip = false
 debug = true

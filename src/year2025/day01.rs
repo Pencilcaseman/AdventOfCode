@@ -70,7 +70,7 @@ mod simd_solution {
 
     use super::*;
 
-    pub fn parse(input: &str) -> (i32, i32) {
+    pub fn parse(input: &str) -> Input {
         let bytes = input.as_bytes();
         let ptr = bytes.as_ptr();
         let len = bytes.len();
