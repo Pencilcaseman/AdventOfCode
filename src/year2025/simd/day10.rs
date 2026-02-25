@@ -163,6 +163,76 @@ fn solve_lights(
         .unwrap()
 }
 
+// fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> ResultThing<N> {
+//     let ProblemMatrix { mat, rows, cols } = mat;
+//     let rows = *rows;
+//     let cols = *cols;
+//
+//     let mut rank = 0;
+//     let mut last = cols;
+//
+//     while rank < rows && rank < last {
+//         // Pick the smallest coefficient to keep coefficients small
+//         if let Some(pivot_row) = (rank..rows)
+//             .filter(|&r| mat[r][rank] != 0)
+//             .min_by_key(|&r| mat[r][rank].abs())
+//         {
+//             mat.swap(pivot_row, rank);
+//
+//             if mat[rank][rank] < 0 {
+//                 mat[rank][rank..cols + 1].iter_mut().for_each(|x| *x *= -1);
+//             }
+//
+//             let pivot_val = mat[rank][rank];
+//
+//             for r in 0..rows {
+//                 let coef = mat[r][rank];
+//
+//                 if r != rank && coef != 0 {
+//                     (0..cols + 1).for_each(|c| {
+//                         mat[r][c] = mat[r][c] * pivot_val - mat[rank][c] *
+// coef;                     });
+//                 }
+//             }
+//
+//             rank += 1;
+//         } else {
+//             // Move the `last` variable (last column) to the front instead of
+//             // skipping a column. This way all free variables are guaranteed
+// to             // be at the end of the matrix
+//             last -= 1;
+//             mat[..rows + 1].iter_mut().for_each(|row| row.swap(rank, last));
+//         }
+//     }
+//
+//     // Pivot coefficients are not necessarily 1, so find LCM and scale rows
+//     // accordingly
+//     let lcm = (0..rank).fold(1, |lcm, r| mat[r][r].lcm(&lcm));
+//     for (pivot_idx, row) in mat[..rank].iter_mut().enumerate() {
+//         let scale = lcm / row[pivot_idx];
+//         row[pivot_idx..cols + 1].iter_mut().for_each(|v| *v *= scale);
+//     }
+//
+//     let nullity = cols - rank;
+//
+//     let rhs: [_; N] = from_fn(|row| mat[row][cols]);
+//     let particular_solution: i32 = rhs[..rank].iter().sum();
+//
+//     let free_vars: Vec<_> = (0..nullity)
+//         .map(|null| {
+//             let vector = from_fn(|row| mat[row][rank + null]);
+//             let limit = mat[rows][rank + null];
+//             let cost = lcm - vector[..rank].iter().sum::<i32>();
+//
+//             FreeVariable::<N> { vector, limit, cost }
+//         })
+//         .collect();
+//
+//     ResultThing { rank, nullity, lcm, particular_solution, rhs, free_vars }
+// }
+
+use std::simd::prelude::*;
+
 fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> Config<N> {
     let ProblemMatrix { mat, rows, cols } = mat;
     let rows = *rows;
@@ -179,19 +249,22 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> Config<N> {
         {
             mat.swap(pivot_row, rank);
 
+            let mut rank_row = i32x16::from_slice(&mat[rank]);
+
             if mat[rank][rank] < 0 {
-                mat[rank][rank..cols + 1].iter_mut().for_each(|x| *x *= -1);
+                rank_row = rank_row.neg();
             }
 
-            let pivot_val = mat[rank][rank];
+            let pivot_val = rank_row[rank];
 
             for r in 0..rows {
                 let coef = mat[r][rank];
 
                 if r != rank && coef != 0 {
-                    (0..cols + 1).for_each(|c| {
-                        mat[r][c] = mat[r][c] * pivot_val - mat[rank][c] * coef;
-                    });
+                    let mut r_row = i32x16::from_slice(&mat[r]);
+                    r_row = r_row * Simd::splat(pivot_val)
+                        - rank_row * Simd::splat(coef);
+                    mat[r].copy_from_slice(r_row.as_array());
                 }
             }
 
@@ -208,9 +281,12 @@ fn rref<const N: usize>(mat: &mut ProblemMatrix<N>) -> Config<N> {
     // Pivot coefficients are not necessarily 1, so find LCM and scale rows
     // accordingly
     let lcm = (0..rank).fold(1, |lcm, r| mat[r][r].lcm(&lcm));
-    for (pivot_idx, row) in mat[..rank].iter_mut().enumerate() {
-        let scale = lcm / row[pivot_idx];
-        row[pivot_idx..cols + 1].iter_mut().for_each(|v| *v *= scale);
+
+    for pivot_idx in 0..rank {
+        let mut row = i32x16::from_slice(&mat[pivot_idx]);
+        let scale = Simd::splat(lcm / row[pivot_idx]);
+        row *= scale;
+        mat[pivot_idx].copy_from_slice(row.as_array());
     }
 
     let nullity = cols - rank;
