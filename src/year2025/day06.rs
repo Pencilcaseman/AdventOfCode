@@ -73,4 +73,3 @@ pub fn part2((nums, ops): &Input) -> u64 {
 // Answers for my input:
 // Part 1: 6209956042374
 // Part 2: 12608160008022
-

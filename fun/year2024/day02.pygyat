@@ -9,7 +9,7 @@ bop parse(input):
 
 	mewing line diddy input.split("\n"):
 		nums.extend(map(int, line.split()))
-	
+
 		p1, p2 = solve_row(nums)
 		nums.clear()
 
