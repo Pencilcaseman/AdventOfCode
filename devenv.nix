@@ -1,6 +1,5 @@
 { pkgs, lib, config, inputs, ... }:
 {
-  # https://devenv.sh/packages/
   packages = with pkgs; [
     git
     jujutsu
@@ -11,7 +10,6 @@
       enable = true;
       channel = "nightly";
       lsp.enable = true;
-      # mold.enable = true;
     };
 
     c.enable = true;

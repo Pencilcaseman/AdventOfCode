@@ -1,4 +1,4 @@
-use std::{array::from_fn, ops::Neg};
+use std::array::from_fn;
 
 use num::Integer;
 
