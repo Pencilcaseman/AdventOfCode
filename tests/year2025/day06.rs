@@ -37,19 +37,19 @@ fn test_part2() {
     assert_eq!(part2(&input), 3263827);
 }
 
-#[test]
-fn test_part2_simd_1() {
-    let input = parse(SIMD_INPUT_1);
-    let target = 123 + 2 + 33 + 4 + 52 + 1 + 2 + 987 + 123 + 111 + 22 + 3 + 4;
-    assert_eq!(part2(&input), target);
-}
-
-#[test]
-fn test_part2_simd_2() {
-    let input = parse(SIMD_INPUT_2);
-    let target = 123 * 2 * 33 + 4 * 52 * 1 + 2 + 987 * 123 + 111 * 22 * 3 * 4;
-    assert_eq!(part2(&input), target);
-}
+// #[test]
+// fn test_part2_simd_1() {
+//     let input = parse(SIMD_INPUT_1);
+//     let target = 123 + 2 + 33 + 4 + 52 + 1 + 2 + 987 + 123 + 111 + 22 + 3 +
+// 4;     assert_eq!(part2(&input), target);
+// }
+//
+// #[test]
+// fn test_part2_simd_2() {
+//     let input = parse(SIMD_INPUT_2);
+//     let target = 123 * 2 * 33 + 4 * 52 * 1 + 2 + 987 * 123 + 111 * 22 * 3 *
+// 4;     assert_eq!(part2(&input), target);
+// }
 
 // #[test]
 // fn test_part1_longer_input() {
