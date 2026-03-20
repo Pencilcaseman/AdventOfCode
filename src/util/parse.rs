@@ -1,6 +1,6 @@
 //! Helper functions to parse strings
 
-use std::borrow::Borrow;
+use std::{borrow::Borrow, io::Read};
 
 use crate::util;
 
@@ -44,16 +44,6 @@ where
             data,
         )
     }
-}
-
-/// Given a string of the form "Lorem ipsum dolor1234", returns the number 1234
-pub fn parse_number<T: std::str::FromStr>(s: &str) -> Option<T> {
-    s.chars()
-        .skip_while(|c| !c.is_ascii_digit())
-        .take_while(|c| c.is_ascii_digit())
-        .collect::<String>()
-        .parse()
-        .ok()
 }
 
 pub struct ParseUnsigned<'a, T, I = std::str::Bytes<'a>>
@@ -107,7 +97,7 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        try_unsigned::<T, I>(&mut self.bytes)
+        try_take_next_unsigned::<T, I>(&mut self.bytes)
     }
 }
 
@@ -120,11 +110,11 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        try_signed::<T, I>(&mut self.bytes)
+        try_take_next_signed::<T, I>(&mut self.bytes)
     }
 }
 
-pub fn try_unsigned_immediate<T: util::integer::Unsigned, I>(
+pub fn try_take_next_unsigned_immediate<T: util::integer::Unsigned, I>(
     bytes: &mut I,
 ) -> Option<T>
 where
@@ -152,36 +142,16 @@ where
     }
 }
 
-pub fn try_unsigned_immediate_with_final_byte<T, I>(
-    bytes: &mut I,
-) -> (Option<T>, Option<u8>)
-where
-    T: util::integer::Unsigned,
-    I: Iterator,
-    I::Item: Borrow<u8>,
-{
-    let Some(byte) = bytes.next() else { return (None, None) };
-    let digit = byte.borrow().wrapping_sub(b'0');
-
-    if digit >= 10 {
-        return (None, Some(*byte.borrow()));
-    }
-
-    let mut n: T = T::from(digit);
-
-    loop {
-        let Some(byte) = bytes.next() else { break (Some(n), None) };
-        let digit = byte.borrow().wrapping_sub(b'0');
-
-        if digit < 10 {
-            n = T::TEN * n + T::from(digit);
-        } else {
-            break (Some(n), Some(*byte.borrow()));
-        }
-    }
+pub fn try_parse_unsigned_immediate<T: util::integer::Unsigned>(
+    string: &[u8],
+) -> Option<T> {
+    let mut bytes = string.iter();
+    try_take_next_unsigned_immediate(&mut bytes)
 }
 
-pub fn try_unsigned<T: util::integer::Unsigned, I>(bytes: &mut I) -> Option<T>
+pub fn try_take_next_unsigned<T: util::integer::Unsigned, I>(
+    bytes: &mut I,
+) -> Option<T>
 where
     I: Iterator,
     I::Item: Borrow<u8>,
@@ -206,7 +176,14 @@ where
     }
 }
 
-pub fn try_signed_immediate<T: util::integer::Signed, I>(
+pub fn try_parse_unsigned<T: util::integer::Unsigned>(
+    string: &[u8],
+) -> Option<T> {
+    let mut bytes = string.iter();
+    try_take_next_unsigned(&mut bytes)
+}
+
+pub fn try_take_next_signed_immediate<T: util::integer::Signed, I>(
     bytes: &mut I,
 ) -> Option<T>
 where
@@ -245,7 +222,16 @@ where
     Some(if sign { -res } else { res })
 }
 
-pub fn try_signed<T: util::integer::Signed, I>(bytes: &mut I) -> Option<T>
+pub fn try_parse_signed_immediate<T: util::integer::Signed>(
+    string: &[u8],
+) -> Option<T> {
+    let mut bytes = string.iter();
+    try_take_next_signed_immediate(&mut bytes)
+}
+
+pub fn try_take_next_signed<T: util::integer::Signed, I>(
+    bytes: &mut I,
+) -> Option<T>
 where
     I: Iterator,
     I::Item: Borrow<u8>,
@@ -282,6 +268,11 @@ where
     };
 
     Some(if sign { -res } else { res })
+}
+
+pub fn try_parse_signed<T: util::integer::Signed>(string: &[u8]) -> Option<T> {
+    let mut bytes = string.iter();
+    try_take_next_signed(&mut bytes)
 }
 
 pub trait ParseOps {

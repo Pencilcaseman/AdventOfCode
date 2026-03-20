@@ -99,8 +99,14 @@ struct Solution {
 macro_rules! solution {
     ($year:tt, $day:tt) => {
         Solution {
-            year: aoc::util::parse::parse_number(&stringify!($year)).unwrap(),
-            day: aoc::util::parse::parse_number(&stringify!($day)).unwrap(),
+            year: aoc::util::parse::try_parse_unsigned(
+                &stringify!($year).as_bytes(),
+            )
+            .unwrap(),
+            day: aoc::util::parse::try_parse_unsigned(
+                &stringify!($day).as_bytes(),
+            )
+            .unwrap(),
             runner: |data: &str| {
                 use aoc::$year::$day::*;
 
