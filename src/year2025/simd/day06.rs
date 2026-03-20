@@ -14,6 +14,8 @@ pub fn parse(input: &str) -> Input {
     type CharSimdType = Simd<u8, SIMD_LANE_WIDTH>;
     type IntSimdType = Simd<u16, SIMD_LANE_WIDTH>;
 
+    // 24.7689
+
     const TO_INT: CharSimdType = CharSimdType::splat(0x0F);
     const SPACES: CharSimdType = CharSimdType::splat(b' ');
     const ONES: IntSimdType = IntSimdType::splat(1);
