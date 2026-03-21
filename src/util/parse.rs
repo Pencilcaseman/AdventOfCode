@@ -1,6 +1,6 @@
 //! Helper functions to parse strings
 
-use std::{borrow::Borrow, io::Read};
+use std::borrow::Borrow;
 
 use crate::util;
 
