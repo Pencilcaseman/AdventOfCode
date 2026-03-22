@@ -43,17 +43,26 @@ pub fn part2(input: &Input) -> u32 {
 
 pub fn parallel_load(input: &[(u32, u32, u32)]) -> BucketThreadEdge {
     let mut buckets = vec![vec![]; NUM_BUCKETS];
-    let chunk_size = input.len() / rayon::current_num_threads();
-    let indices: Vec<_> = (0..input.len()).collect();
 
-    for b in indices
-        .par_chunks(chunk_size)
-        .map(|is| {
+    let chunk_size = input.len() / rayon::current_num_threads();
+    let num_chunks = input.len().div_ceil(chunk_size);
+
+    for b in (0..num_chunks)
+        .into_par_iter()
+        .map(|chunk_id| {
+            let start = chunk_id * chunk_size;
+            let end = ((chunk_id + 1) * chunk_size).min(input.len());
+
             let mut buckets = vec![vec![]; NUM_BUCKETS];
 
-            for &i in is {
+            for i in start..end {
                 for j in i + 1..input.len() {
                     let d = dist(&input[i], &input[j]);
+
+                    // Early cutoff
+                    if d > DIST_MAGNITUDE {
+                        continue;
+                    }
 
                     let bucket =
                         (d / DIST_MAGNITUDE).min(NUM_BUCKETS as u64 - 1);
