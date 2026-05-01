@@ -7,7 +7,7 @@ scalar_or_simd!(day04);
 scalar_or_simd!(day05);
 scalar_or_simd!(day06);
 scalar_or_simd!(day07);
-pub mod day08;
+scalar_or_simd!(day08);
 pub mod day09;
 scalar_or_simd!(day10);
 pub mod day11;

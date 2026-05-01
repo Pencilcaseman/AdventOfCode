@@ -2,8 +2,8 @@
 //!
 //! This one had me stumped. All credit for this solution goes to
 //! [maneatingape](https://github.com/maneatingape/advent-of-code-rust/blob/main/src/year2025/day09.rs)
-//! for this solution. I have made a couple small improvements, but I could not
-//! come up with this algorithm myself.
+//! for this solution. I have made a couple small improvements, but I was not
+//! able to come up with this algorithm myself.
 //!
 //! Please check out maneatingape's solutions for a proper explanation of how
 //! this works.

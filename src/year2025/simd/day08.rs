@@ -1,21 +1,9 @@
-//! # Playground
+//! Janky solution that avoids the bucketing of the original solution and
+//! instead cuts off overly large distances. This will not work in the general
+//! case, and is not guaranteed to work on all inputs. That said, it is much
+//! faster.
 //!
-//! This challenge is very easy to solve once you realize it maps exactly to
-//! finding a minimum spanning tree (MST) of the junction locations.
-//!
-//! To find the MST efficiently, a disjoint set union (DSU) data structure is
-//! used to efficiently check when a circuit contains a junction box. By
-//! simultaneously tracking the size of each circuit, the solutions to part 1
-//! and part 2 drop out quite nicely.
-//!
-//! To improve the performance of the code, we split the input across multiple
-//! threads and place edges in buckets according to their approximate length.
-//! These buckets are then lazily flattened and sorted so they appear as a
-//! contiguous array. This saves a significant amount of unnecessary
-//! computation.
-//!
-//! A few optimizations to the DSU algorithm also provide a nice performance
-//! improvement.
+//! Please create a PR/issue if you know of a better solution
 
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -24,10 +12,7 @@ use crate::util::parse::ParseUnsigned;
 
 type Input = (u32, u32);
 
-type BucketThreadEdge = Vec<Vec<Vec<(u64, u16, u16)>>>;
-
-const NUM_BUCKETS: usize = 8;
-const DIST_MAGNITUDE: u64 = 15000 * 15000;
+const CUTOFF: u64 = 15000 * 15000;
 
 pub fn parse(input: &str) -> Input {
     solve(ParseUnsigned::<u32>::new(input.bytes()).tuples().collect(), 1000)
@@ -41,48 +26,43 @@ pub fn part2(input: &Input) -> u32 {
     input.1
 }
 
-pub fn parallel_load(input: &[(u32, u32, u32)]) -> BucketThreadEdge {
-    let mut buckets = vec![vec![]; NUM_BUCKETS];
-
+pub fn parallel_load(input: &[(u32, u32, u32)]) -> Vec<(u64, u16, u16)> {
     let chunk_size = input.len() / rayon::current_num_threads();
     let num_chunks = input.len().div_ceil(chunk_size);
 
-    for b in (0..num_chunks)
+    let res = (0..num_chunks)
         .into_par_iter()
         .map(|chunk_id| {
             let start = chunk_id * chunk_size;
             let end = ((chunk_id + 1) * chunk_size).min(input.len());
 
-            let mut buckets = vec![vec![]; NUM_BUCKETS];
+            let mut bucket = vec![];
 
             for i in start..end {
                 for j in i + 1..input.len() {
                     let d = dist(&input[i], &input[j]);
 
-                    // // Early cutoff
-                    // if d > DIST_MAGNITUDE {
-                    //     continue;
-                    // }
+                    if d > CUTOFF {
+                        continue;
+                    }
 
-                    let bucket =
-                        (d / DIST_MAGNITUDE).min(NUM_BUCKETS as u64 - 1);
-                    buckets[bucket as usize].push((d, i as u16, j as u16));
+                    bucket.push((d, i as u16, j as u16));
                 }
             }
 
-            buckets
+            bucket
         })
-        .collect::<Vec<_>>()
-    {
-        buckets.iter_mut().zip(b).for_each(|(dst, b)| dst.push(b));
-    }
+        .collect::<Vec<_>>();
 
-    buckets
+    let mut res = res.concat();
+    res.sort_unstable_by_key(|x| x.0);
+
+    res
 }
 
 pub fn solve(input: Vec<(u32, u32, u32)>, steps: usize) -> (u32, u32) {
-    let buckets = parallel_load(&input);
-    let mut iter = flatten(&buckets);
+    let bucket = parallel_load(&input);
+    let mut iter = bucket.into_iter();
 
     let mut dsu_parents: Vec<_> = (0..input.len() as u16).collect();
     let mut dsu_counts = vec![1; input.len()];
@@ -117,15 +97,13 @@ fn dist(a: &(u32, u32, u32), b: &(u32, u32, u32)) -> u64 {
     dx * dx + dy * dy + dz * dz
 }
 
-fn flatten(
-    buckets: &BucketThreadEdge,
-) -> impl Iterator<Item = (u64, u16, u16)> {
-    buckets.iter().flat_map(|b| {
-        let mut merged = b.concat();
-        merged.sort_unstable_by_key(|v| v.0);
-        merged
-    })
-}
+// fn flatten(buckets: &ThreadEdge) -> impl Iterator<Item = (u64, u16, u16)> {
+//     buckets.iter().flat_map(|b| {
+//         let mut merged = b.concat();
+//         merged.sort_unstable_by_key(|v| v.0);
+//         merged
+//     })
+// }
 
 fn dsu_find(parents: &mut [u16], mut i: u16) -> u16 {
     while parents[i as usize] != i {
