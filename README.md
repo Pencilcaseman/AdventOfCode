@@ -1,5 +1,8 @@
 # AdventOfCode
 
+> [!important]
+> Work on this repository has been moved to [git.tobydavis.dev/tobydavis/AdventOfCode](https://git.tobydavis.dev/tobydavis/AdventOfCode).
+
 My Advent of Code Solutions in Rust. The code and algorithms used are optimised
 to the best of my ability.
 
